@@ -14,6 +14,8 @@ const categoryRoutes = require('./routes/categories');
 const productRoutes = require('./routes/products');
 const healthRoutes = require('./routes/health');
 const adminRoutes = require('./routes/admin');
+const blogRoutes = require('./routes/blog');
+const kycRoutes = require('./routes/kyc');
 
 const app = express();
 
@@ -78,6 +80,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/kyc', kycRoutes);
+app.use('/api/blog', blogRoutes);
 
 // Static for uploaded media
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
@@ -108,6 +112,13 @@ app.get('/verify', (req, res) => {
 app.get('/admin', (req, res) => {
 	res.sendFile(path.join(frontendPages, 'admin.html'));
 });
+
+// User dashboard
+app.get('/dashboard', (req, res) => {
+	res.sendFile(path.join(frontendPages, 'dashboard.html'));
+});
+
+// (no user dashboard route)
 
 // 404 and error handlers
 app.use(notFound);

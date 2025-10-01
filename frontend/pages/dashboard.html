@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard · KEOHAMS</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="/src/css/styles.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .sidebar { min-height: 100vh; border-right: 1px solid #e9ecef; }
+    .sidebar .nav-link.active { background: #f1f3f5; font-weight: 600; }
+  </style>
+  <script type="module" src="/src/js/dashboard.js"></script>
+  <script>
+    if (!localStorage.getItem('token')) { window.location.href='/?#signin'; }
+  </script>
+  </head>
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      <aside class="col-12 col-md-3 col-lg-2 sidebar p-3">
+        <a class="navbar-brand fw-bold d-block mb-3" href="/">KEOHAMS</a>
+        <nav class="nav nav-pills flex-column gap-1" id="dashNav">
+          <a class="nav-link active" data-target="#pane-overview" href="#">Overview</a>
+          <a class="nav-link" data-target="#pane-kyc" href="#">KYC</a>
+          <a class="nav-link" href="/pages/blog.html" target="_blank">Blog</a>
+          <a class="nav-link" data-target="#pane-orders" href="#">Orders</a>
+          <a class="nav-link" data-target="#pane-settings" href="#">Settings</a>
+          <a class="nav-link text-danger" id="dashSignOut" href="#">Sign out</a>
+        </nav>
+      </aside>
+      <main class="col-12 col-md-9 col-lg-10 p-4">
+        <div id="pane-overview" class="pane">
+          <h1 class="h4 mb-3">Welcome</h1>
+          <div class="alert" id="kycBanner" role="alert" style="display:none;"></div>
+          <p class="text-muted">Browse products, submit RFQs and manage your account.</p>
+        </div>
+        <div id="pane-kyc" class="pane d-none">
+          <h2 class="h5 mb-3">KYC Verification</h2>
+          <div id="kycStatus" class="mb-3"></div>
+          <form id="kycForm" class="vstack gap-3" enctype="multipart/form-data">
+            <div>
+              <label class="form-label">Portrait Photo</label>
+              <div class="d-flex gap-2">
+                <input type="file" class="form-control" id="kycPortrait" accept="image/*" capture="user" required />
+                <button class="btn btn-outline-secondary" type="button" id="btnUseCameraPhoto">Use Camera</button>
+              </div>
+            </div>
+            <div>
+              <label class="form-label">Selfie Video</label>
+              <div class="d-flex gap-2">
+                <input type="file" class="form-control" id="kycSelfieVideo" accept="video/*" capture="user" required />
+                <button class="btn btn-outline-secondary" type="button" id="btnUseCameraVideo">Use Camera</button>
+              </div>
+            </div>
+            <div class="row g-2">
+              <div class="col-md-6">
+                <label class="form-label">ID Front</label>
+                <input type="file" class="form-control" id="kycIdFront" accept="image/*" required />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">ID Back (optional)</label>
+                <input type="file" class="form-control" id="kycIdBack" accept="image/*" />
+              </div>
+            </div>
+            <div>
+              <label class="form-label">Notes (optional)</label>
+              <textarea id="kycNotes" class="form-control" rows="3"></textarea>
+            </div>
+            <button class="btn btn-primary" type="submit">Submit KYC</button>
+          </form>
+        </div>
+        <div id="pane-orders" class="pane d-none">
+          <h2 class="h5">Orders</h2>
+          <p class="text-muted">Coming soon.</p>
+        </div>
+        <div id="pane-settings" class="pane d-none">
+          <h2 class="h5">Settings</h2>
+          <p class="text-muted">Update your profile and preferences.</p>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- KYC required modal -->
+  <div class="modal fade" id="kycRequiredModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">KYC Required</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>You need to complete KYC verification to access this feature. Please go to the KYC tab and submit your documents.</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-primary" data-goto-kyc>Go to KYC</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Photo Capture Modal -->
+  <div class="modal fade" id="photoCaptureModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Capture Portrait</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center">
+          <video id="photoPreview" autoplay playsinline style="max-width:100%; border-radius:8px; background:#000"></video>
+          <div class="small text-muted mt-2">Align your face in the frame and tap Capture.</div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary" id="btnCapturePhoto">Capture & Use</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Video Capture Modal -->
+  <div class="modal fade" id="videoCaptureModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Record Selfie Video</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center">
+          <video id="videoPreview" autoplay playsinline muted style="max-width:100%; border-radius:8px; background:#000"></video>
+          <div class="small text-muted mt-2">Tap Start, then Stop when done.</div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-outline-primary" id="btnStartVideo">Start</button>
+          <button class="btn btn-primary d-none" id="btnStopVideo">Stop & Use</button>
+        </div>
+      </div>
+    </div>
+  </div>
+ </body>
+ </html>

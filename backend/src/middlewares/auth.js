@@ -23,3 +23,20 @@ function requireRole(...roles) {
 }
 
 module.exports = { requireAuth, requireRole };
+/**
+ * Try to read JWT if sent; do not error if absent/invalid. Sets req.user when valid.
+ */
+function tryAuth(req, _res, next) {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  if (!token) return next();
+  try {
+    const payload = verify(token);
+    req.user = payload;
+  } catch (_e) {
+    // ignore errors; proceed unauthenticated
+  }
+  next();
+}
+
+module.exports.tryAuth = tryAuth;

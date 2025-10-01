@@ -12,9 +12,17 @@ async function verify() {
       const t = await res.json().catch(() => ({}));
       throw new Error(t.message || `Verification failed (${res.status})`);
     }
-    statusEl.className = 'alert alert-success';
-    statusEl.textContent = 'Email verified! You can now sign in.';
-    setTimeout(() => { window.location.href = '/#signin'; }, 1200);
+    const body = await res.json().catch(()=>({}));
+    if (body && body.token) {
+      localStorage.setItem('token', body.token);
+      statusEl.className = 'alert alert-success';
+      statusEl.textContent = 'Email verified! Redirecting to your dashboard...';
+      setTimeout(() => { window.location.href = '/dashboard'; }, 800);
+    } else {
+      statusEl.className = 'alert alert-success';
+      statusEl.textContent = 'Email verified! You can now sign in.';
+      setTimeout(() => { window.location.href = '/#signin'; }, 1200);
+    }
   } catch (e) {
     statusEl.className = 'alert alert-danger';
     statusEl.textContent = e.message || 'Verification failed.';

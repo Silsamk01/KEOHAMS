@@ -53,6 +53,7 @@ exports.register = async (req, res) => {
   } catch (e) {
     // continue even if email send fails in dev
     console.warn('Email send failed:', e.message);
+    console.info('[DEV ONLY] Verification link:', verifyUrl);
   }
 
   return res.status(201).json({ message: 'Registered. Please verify your email.' });
@@ -92,8 +93,9 @@ exports.verifyEmail = async (req, res) => {
       role: 'CUSTOMER',
       email_verified: 1
     });
-    await db('pending_registrations').where({ id: row.id }).del();
-    return res.json({ message: 'Email verified. Account created.' });
+  await db('pending_registrations').where({ id: row.id }).del();
+  const tokenJwt = sign({ sub: userId, role: 'CUSTOMER' });
+  return res.json({ message: 'Email verified. Account created.', token: tokenJwt });
   } else {
     const row = await db('tokens').where({ token, type: 'verify-email' }).first();
     if (!row) return res.status(400).json({ message: 'Invalid token' });

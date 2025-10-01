@@ -26,4 +26,11 @@ io.on('connection', (socket) => {
 
 server.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
+  // Verify SMTP transport once on boot (non-fatal)
+  try {
+    const { verifyTransport } = require('./utils/email');
+    verifyTransport().then(() => console.log('SMTP: transport OK')).catch((e)=> console.warn('SMTP: verify failed -', e.message));
+  } catch (e) {
+    console.warn('SMTP: not configured');
+  }
 });

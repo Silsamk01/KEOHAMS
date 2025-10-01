@@ -12,9 +12,14 @@ async function fetchJSON(url, opts={}) {
   return res.json();
 }
 
-function requireAdminOrRedirect() {
-  // lightweight gate: if no token, go to home; optionally we could call /auth/me
+async function requireAdminOrRedirect() {
+  // if no token, go to sign-in
   if (!getToken()) { window.location.href = '/#signin'; throw new Error('Not signed in'); }
+  // verify role via /auth/me
+  try {
+    const me = await fetchJSON(`${API_BASE}/auth/me`);
+    if (!me || me.role !== 'ADMIN') { window.location.href = '/'; throw new Error('Forbidden'); }
+  } catch (_) { window.location.href = '/'; throw new Error('Forbidden'); }
 }
 
 // Dashboard
@@ -151,8 +156,8 @@ function wireNav() {
   document.getElementById('adminSignOut').addEventListener('click', (e)=>{ e.preventDefault(); localStorage.removeItem('token'); window.location.href='/'; });
 }
 
-(function init(){
-  try { requireAdminOrRedirect(); } catch { return; }
+(async function init(){
+  try { await requireAdminOrRedirect(); } catch { return; }
   wireNav();
   loadStats();
   loadUsers();
@@ -511,3 +516,72 @@ function wireProductCreate() {
 function escapeHtml(s='') {
   return s.replace(/[&<>"]+/g, (c)=>({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
 }
+
+// =========================
+// Blog Management (Admin)
+// =========================
+const BLOG_API = 'http://localhost:4000/api/blog/admin';
+
+async function blogFetch(url, opts={}){
+  const res = await fetch(url, { ...opts, headers: { 'Content-Type':'application/json', ...(opts.headers||{}), ...authHeaders() } });
+  if (!res.ok) throw new Error((await res.text()) || 'Request failed');
+  try { return await res.json(); } catch { return {}; }
+}
+
+async function loadAdminBlog(){
+  try{
+    const items = await blogFetch(BLOG_API);
+    const list = document.getElementById('adminBlogList');
+    if (!list) return;
+    list.innerHTML = (items||[]).map(p => `
+      <div class="border rounded p-2 d-flex justify-content-between align-items-center">
+        <div>
+          <div class="fw-semibold">${escapeHtml(p.title)} ${p.require_login?' <span class=\"badge bg-secondary\">Login</span>':''}</div>
+          <div class="small text-muted">/${escapeHtml(p.slug)} · ${p.status}${p.published_at? ' · '+new Date(p.published_at).toLocaleString():''}</div>
+        </div>
+        <div class="btn-group btn-group-sm">
+          <button class="btn btn-outline-danger" data-del-id="${p.id}">Delete</button>
+        </div>
+      </div>
+    `).join('');
+    list.querySelectorAll('[data-del-id]').forEach(btn=>{
+      btn.addEventListener('click', async()=>{
+        if(!confirm('Delete this post?')) return;
+        await blogFetch(`${BLOG_API}/${btn.getAttribute('data-del-id')}`, { method:'DELETE' });
+        await loadAdminBlog();
+      });
+    });
+  }catch(e){
+    console.error(e);
+    const list = document.getElementById('adminBlogList');
+    if (list) list.innerHTML = '<div class="text-danger">Failed to load posts.</div>';
+  }
+}
+
+function wireBlog(){
+  const form = document.getElementById('blogCreateForm');
+  if(!form) return;
+  form.addEventListener('submit', async(e)=>{
+    e.preventDefault();
+    try{
+      const body = {
+        title: document.getElementById('blogTitle').value.trim(),
+        slug: document.getElementById('blogSlug').value.trim(),
+        excerpt: document.getElementById('blogExcerpt').value,
+        content: document.getElementById('blogContent').value,
+        require_login: document.getElementById('blogRequireLogin').checked,
+        status: document.getElementById('blogStatus').value
+      };
+      await blogFetch(BLOG_API, { method:'POST', body: JSON.stringify(body) });
+      form.reset();
+      await loadAdminBlog();
+      alert('Post created');
+    }catch(e){ alert(e.message || 'Create failed'); }
+  });
+  document.getElementById('refreshBlog')?.addEventListener('click', loadAdminBlog);
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  wireBlog();
+  loadAdminBlog();
+});

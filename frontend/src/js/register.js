@@ -40,6 +40,7 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
   const name = document.getElementById('name').value.trim();
   const email = document.getElementById('email').value.trim();
   const dob = document.getElementById('dob').value;
+  const gender = document.getElementById('gender').value;
   const password = document.getElementById('password').value;
   const confirmPassword = document.getElementById('confirmPassword').value;
   const phone = document.getElementById('phone').value.trim();
@@ -66,7 +67,7 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
   try {
     const res = await fetch(`${API_BASE}/auth/register`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, dob, password, phone, address, captchaToken, captchaAnswer })
+      body: JSON.stringify({ name, email, dob, gender: gender || undefined, password, phone, address, captchaToken, captchaAnswer })
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));

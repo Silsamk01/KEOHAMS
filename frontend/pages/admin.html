@@ -43,6 +43,9 @@
       <li class="nav-item" role="presentation">
         <button class="nav-link" id="tab-profile" data-bs-toggle="pill" data-bs-target="#pane-profile" type="button" role="tab">Profile</button>
       </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-blog" data-bs-toggle="pill" data-bs-target="#pane-blog" type="button" role="tab">Blog</button>
+      </li>
     </ul>
 
     <div class="tab-content" id="adminTabContent">
@@ -362,6 +365,59 @@
                     <button class="btn btn-outline-danger btn-sm d-none" id="twofaDisableBtn">Disable 2FA</button>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="pane-blog" role="tabpanel">
+        <div class="row g-4">
+          <div class="col-lg-4">
+            <div class="card h-100">
+              <div class="card-header">Create Post</div>
+              <div class="card-body">
+                <form id="blogCreateForm" class="vstack gap-2">
+                  <div>
+                    <label class="form-label">Title</label>
+                    <input type="text" class="form-control" id="blogTitle" required>
+                  </div>
+                  <div>
+                    <label class="form-label">Slug</label>
+                    <input type="text" class="form-control" id="blogSlug" required>
+                  </div>
+                  <div>
+                    <label class="form-label">Excerpt</label>
+                    <textarea class="form-control" id="blogExcerpt" rows="2"></textarea>
+                  </div>
+                  <div>
+                    <label class="form-label">Content</label>
+                    <textarea class="form-control" id="blogContent" rows="6" required></textarea>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="blogRequireLogin">
+                    <label class="form-check-label" for="blogRequireLogin">Require login to view</label>
+                  </div>
+                  <div>
+                    <label class="form-label">Status</label>
+                    <select class="form-select" id="blogStatus">
+                      <option value="DRAFT">DRAFT</option>
+                      <option value="PUBLISHED">PUBLISHED</option>
+                    </select>
+                  </div>
+                  <button class="btn btn-primary" type="submit">Create Post</button>
+                </form>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-8">
+            <div class="card h-100">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Posts</span>
+                <button class="btn btn-outline-secondary btn-sm" id="refreshBlog">Refresh</button>
+              </div>
+              <div class="card-body">
+                <div id="adminBlogList" class="vstack gap-2"></div>
               </div>
             </div>
           </div>

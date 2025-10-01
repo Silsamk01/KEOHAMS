@@ -1,0 +1,23 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "knex migrate:latest",
+			"type": "shell",
+			"command": "npx",
+			"args": [
+				"dotenv",
+				"-e",
+				".env",
+				"--",
+				"knex",
+				"migrate:latest"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$eslint - stylish"
+			],
+			"group": "build"
+		}
+	]
+}

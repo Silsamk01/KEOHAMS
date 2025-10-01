@@ -183,7 +183,13 @@ function wireEvents() {
 							return;
 						}
 						const user = await loginWithCaptcha(els.signinEmail.value.trim(), els.signinPassword.value, captchaToken, captchaAnswer);
-					bootstrap.Modal.getInstance(els.signinModal).hide();
+					// If the logged-in user is an admin, redirect straight to the admin dashboard
+					if (user && user.role === 'ADMIN') {
+						try { bootstrap.Modal.getInstance(els.signinModal).hide(); } catch(_){}
+						window.location.href = '/admin';
+						return;
+					}
+					try { bootstrap.Modal.getInstance(els.signinModal).hide(); } catch(_){}
 					await refreshAuthState();
 				} catch (err) {
 					const msg = err.message || 'Sign-in failed';
