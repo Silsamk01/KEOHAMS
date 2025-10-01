@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KEOHAMS Wholesale Marketplace</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="/src/css/styles.css" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="description" content="Buy wholesale in bulk with MOQ, RFQ, and real-time support.">
+</head>
+<body>
+  <!-- Announcement Bar -->
+  <div class="announcement text-center small text-white py-1">Wholesale savings: tiered discounts on bulk orders</div>
+
+  <header class="navbar navbar-expand-lg navbar-light bg-white border-bottom sticky-top">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="#">KEOHAMS</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <form class="d-flex ms-auto my-2 my-lg-0" role="search" id="searchForm">
+          <input class="form-control me-2" type="search" placeholder="Search products..." aria-label="Search" id="searchInput">
+          <button class="btn btn-primary" type="submit">Search</button>
+        </form>
+        <ul class="navbar-nav ms-3 align-items-center">
+          <li class="nav-item me-2">
+            <select class="form-select form-select-sm" id="currencySelect">
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="GBP">GBP</option>
+              <option value="NGN">NGN</option>
+            </select>
+          </li>
+          <li class="nav-item" id="navSignedOut">
+            <a class="nav-link" href="#" id="navSignInLink">Sign In</a>
+          </li>
+          <li class="nav-item" id="navCreateAccount">
+            <a class="btn btn-primary btn-sm" href="/register" id="navCreateLink">Create Account</a>
+          </li>
+          <li class="nav-item dropdown d-none" id="navSignedIn">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" id="navUserName">Account</a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="#">Profile</a></li>
+              <li><a class="dropdown-item" href="#">Orders</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="#" id="signOutLink">Sign out</a></li>
+            </ul>
+          </li>
+          <li class="nav-item"><a class="nav-link" href="#">Cart</a></li>
+        </ul>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero hero-bg py-6 py-lg-7">
+    <div class="container">
+      <div class="row align-items-center">
+        <div class="col-lg-7 text-white">
+          <span class="badge bg-success-subtle text-success mb-3">New</span>
+          <h1 class="display-5 fw-bold">Your Wholesale Partner for Bulk Purchases</h1>
+          <p class="lead text-white-50">MOQ-aware pricing, RFQ, and real-time support. Discover thousands of products and tiered discounts.</p>
+          <div class="d-flex gap-2">
+            <a href="#products" class="btn btn-light btn-lg shadow-sm">Shop Now</a>
+            <a href="#" class="btn btn-outline-light btn-lg">Request a Quote</a>
+          </div>
+        </div>
+        <div class="col-lg-5 mt-4 mt-lg-0">
+          <div class="p-4 bg-white shadow-sm rounded-4">
+            <h2 class="h5 mb-3">Browse by Category</h2>
+            <div class="d-flex flex-wrap gap-2" id="heroCategories"><!-- Filled by JS --></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Feature Highlights -->
+  <section class="features py-5 bg-white">
+    <div class="container">
+      <div class="row g-3 g-lg-4">
+        <div class="col-6 col-lg-3">
+          <div class="feature-card p-3 rounded-4 h-100">
+            <div class="icon-circle bg-primary-subtle text-primary">💬</div>
+            <h3 class="h6 mt-2 mb-1">Real-time Chat</h3>
+            <p class="small text-muted mb-0">Instant support and order coordination.</p>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="feature-card p-3 rounded-4 h-100">
+            <div class="icon-circle bg-success-subtle text-success">🏷️</div>
+            <h3 class="h6 mt-2 mb-1">Bulk Discounts</h3>
+            <p class="small text-muted mb-0">Tiered pricing for larger quantities.</p>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="feature-card p-3 rounded-4 h-100">
+            <div class="icon-circle bg-warning-subtle text-warning">🌎</div>
+            <h3 class="h6 mt-2 mb-1">Multi-currency</h3>
+            <p class="small text-muted mb-0">See prices in your local currency.</p>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="feature-card p-3 rounded-4 h-100">
+            <div class="icon-circle bg-info-subtle text-info">🛡️</div>
+            <h3 class="h6 mt-2 mb-1">Verified Buyers</h3>
+            <p class="small text-muted mb-0">KYC verification and secure access.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <main class="py-5">
+    <div class="container">
+      <div class="row">
+        <aside class="col-lg-3 mb-4 mb-lg-0">
+          <div class="card">
+            <div class="card-header fw-semibold">Categories</div>
+            <div class="list-group list-group-flush" id="categoryList">
+              <!-- Filled by JS -->
+            </div>
+          </div>
+        </aside>
+        <section class="col-lg-9" id="products">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h5 m-0">Featured Products</h2>
+            <div>
+              <select class="form-select form-select-sm" id="stockFilter" style="width:auto;display:inline-block">
+                <option value="">All stock</option>
+                <option value="IN_STOCK">In stock</option>
+                <option value="PREORDER">Preorder</option>
+                <option value="OUT_OF_STOCK">Out of stock</option>
+              </select>
+            </div>
+          </div>
+          <div class="row g-3" id="productGrid">
+            <!-- Filled by JS -->
+          </div>
+          <div class="text-center mt-4">
+            <button class="btn btn-outline-primary" id="loadMoreBtn">Load more</button>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <!-- How it works -->
+  <section class="how-it-works py-5 bg-light">
+    <div class="container">
+      <h2 class="h4 text-center mb-4">How it works</h2>
+      <div class="row g-4">
+        <div class="col-12 col-lg-4">
+          <div class="step p-4 bg-white rounded-4 h-100">
+            <div class="step-num">1</div>
+            <h3 class="h6">Browse catalog</h3>
+            <p class="small text-muted mb-0">Find products by category, search and filters.</p>
+          </div>
+        </div>
+        <div class="col-12 col-lg-4">
+          <div class="step p-4 bg-white rounded-4 h-100">
+            <div class="step-num">2</div>
+            <h3 class="h6">Request a quote</h3>
+            <p class="small text-muted mb-0">Submit RFQ for custom pricing and MOQ tiers.</p>
+          </div>
+        </div>
+        <div class="col-12 col-lg-4">
+          <div class="step p-4 bg-white rounded-4 h-100">
+            <div class="step-num">3</div>
+            <h3 class="h6">Chat & checkout</h3>
+            <p class="small text-muted mb-0">Discuss details in real time and finalize.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-section text-center py-5">
+    <div class="container">
+      <h2 class="h4 mb-2">Ready to buy in bulk?</h2>
+      <p class="text-muted mb-3">Create an account to access RFQs, discounts, and real-time support.</p>
+      <a href="#" class="btn btn-primary btn-lg">Get Started</a>
+    </div>
+  </section>
+
+  <footer class="border-top py-4">
+    <div class="container d-flex flex-wrap justify-content-between align-items-center">
+      <p class="mb-0 text-muted">© <span id="year"></span> KEOHAMS</p>
+      <nav class="nav">
+        <a class="nav-link px-2" href="#">Privacy</a>
+        <a class="nav-link px-2" href="#">Terms</a>
+        <a class="nav-link px-2" href="#">Support</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module" src="/src/js/main.js"></script>
+
+  <!-- Sign In Modal -->
+  <div class="modal fade" id="signinModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Sign In</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="signinForm" class="vstack gap-3">
+            <div>
+              <label class="form-label">Email</label>
+              <input type="email" class="form-control" id="signinEmail" required />
+            </div>
+            <div>
+              <label class="form-label">Password</label>
+              <input type="password" class="form-control" id="signinPassword" required />
+            </div>
+            <div class="p-2 bg-light rounded-3">
+              <label class="form-label">Captcha</label>
+              <div class="d-flex align-items-center gap-3">
+                <canvas id="signinCaptchaCanvas" class="captcha-canvas" width="200" height="60" title="Captcha"></canvas>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshSigninCaptcha">New code</button>
+              </div>
+              <input type="text" class="form-control mt-2" id="signinCaptchaAnswer" placeholder="Enter the 6-character code" maxlength="6" required>
+              <div class="invalid-feedback" id="signinCaptchaError">Please enter the correct 6-character code.</div>
+            </div>
+            <button class="btn btn-primary w-100" type="submit">Sign In</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Account Modal -->
+  <div class="modal fade" id="signupModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Create Account</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="signupForm" class="vstack gap-3">
+            <div>
+              <label class="form-label">Full Name</label>
+              <input type="text" class="form-control" id="signupName" required />
+            </div>
+            <div>
+              <label class="form-label">Email</label>
+              <input type="email" class="form-control" id="signupEmail" required />
+            </div>
+            <div>
+              <label class="form-label">Password</label>
+              <input type="password" class="form-control" id="signupPassword" minlength="6" required />
+            </div>
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-label">Phone</label>
+                <input type="text" class="form-control" id="signupPhone" />
+              </div>
+              <div class="col-6">
+                <label class="form-label">Address</label>
+                <input type="text" class="form-control" id="signupAddress" />
+              </div>
+            </div>
+            <button class="btn btn-primary w-100" type="submit">Create Account</button>
+            <p class="small text-muted mt-2">By creating an account, you agree to our Terms and Privacy Policy.</p>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
