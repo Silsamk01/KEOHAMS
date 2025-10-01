@@ -92,6 +92,7 @@ const frontendSrc = path.join(__dirname, '..', '..', 'frontend', 'src');
 const frontendPages = path.join(__dirname, '..', '..', 'frontend', 'pages');
 app.use(express.static(frontendPublic));
 app.use('/src', express.static(frontendSrc));
+app.use('/pages', express.static(frontendPages));
 
 // Base route -> serve index.html
 app.get('/', (req, res) => {
@@ -116,6 +117,14 @@ app.get('/admin', (req, res) => {
 // User dashboard
 app.get('/dashboard', (req, res) => {
 	res.sendFile(path.join(frontendPages, 'dashboard.html'));
+});
+
+// Clean blog routes without .html extensions
+app.get('/blog', (req, res) => {
+	res.sendFile(path.join(frontendPages, 'blog.html'));
+});
+app.get('/blog/:slug', (req, res) => {
+	res.sendFile(path.join(frontendPages, 'blog-post.html'));
 });
 
 // (no user dashboard route)

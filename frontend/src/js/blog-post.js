@@ -2,7 +2,10 @@ const API_BASE = 'http://localhost:4000/api';
 function getToken(){ return localStorage.getItem('token'); }
 function authHeaders(){ const t=getToken(); return t?{ Authorization:`Bearer ${t}` }:{}; }
 
-function getParam(name){ return new URLSearchParams(location.search).get(name); }
+function getSlugFromPath(){
+  const m = location.pathname.match(/\/blog\/(.+)$/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
 
 async function fetchJSON(url, opts={}){
   const res = await fetch(url, { ...opts, headers: { ...(opts.headers||{}), ...authHeaders() } });
@@ -11,7 +14,7 @@ async function fetchJSON(url, opts={}){
 }
 
 async function load(){
-  const slug = getParam('slug');
+  const slug = getSlugFromPath();
   if (!slug) { document.body.innerHTML = '<div class="container py-4">Invalid URL.</div>'; return; }
   try {
     const post = await fetchJSON(`${API_BASE}/blog/slug/${encodeURIComponent(slug)}`);

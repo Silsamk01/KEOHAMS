@@ -17,7 +17,7 @@ async function load(){
       return;
     }
     list.innerHTML = posts.map(p => `
-      <div class="card post-card p-3" onclick="location.href='/pages/blog-post.html?slug=${encodeURIComponent(p.slug)}'">
+      <div class=\"card post-card p-3\" onclick=\"location.href='/blog/${encodeURIComponent(p.slug)}'\">
         <h2 class="h5 mb-1">${p.title}</h2>
         <div class="small text-muted">${p.published_at ? new Date(p.published_at).toLocaleString() : ''}${p.require_login? ' · 🔒 Login required':''}</div>
         <p class="mb-0 mt-2">${(p.excerpt||'').slice(0,160)}</p>
