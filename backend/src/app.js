@@ -16,6 +16,9 @@ const healthRoutes = require('./routes/health');
 const adminRoutes = require('./routes/admin');
 const blogRoutes = require('./routes/blog');
 const kycRoutes = require('./routes/kyc');
+const ordersRoutes = require('./routes/orders');
+const notificationsRoutes = require('./routes/notifications');
+const chatRoutes = require('./routes/chats');
 
 const app = express();
 
@@ -82,9 +85,16 @@ app.use('/api/products', productRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/kyc', kycRoutes);
 app.use('/api/blog', blogRoutes);
+app.use('/api/orders', ordersRoutes);
+app.use('/api/notifications', notificationsRoutes);
+app.use('/api/chats', chatRoutes);
 
 // Static for uploaded media
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+// Serve company logo from repo root
+app.get('/keohamlogo.jpg', (req, res) => {
+	res.sendFile(path.join(__dirname, '..', '..', 'keohamlogo.jpg'));
+});
 
 // Serve frontend landing page from backend
 const frontendPublic = path.join(__dirname, '..', '..', 'frontend', 'public');
@@ -109,15 +119,42 @@ app.get('/verify', (req, res) => {
 	res.sendFile(path.join(frontendPages, 'verify.html'));
 });
 
+// Forgot and Reset password pages
+app.get('/forgot', (req, res) => {
+	res.sendFile(path.join(frontendPages, 'forgot.html'));
+});
+app.get('/reset', (req, res) => {
+	res.sendFile(path.join(frontendPages, 'reset.html'));
+});
+
 // Admin page shell
 app.get('/admin', (req, res) => {
+	res.set({
+		'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+		'Pragma': 'no-cache',
+		'Expires': '0'
+	});
 	res.sendFile(path.join(frontendPages, 'admin.html'));
 });
 
 // User dashboard
 app.get('/dashboard', (req, res) => {
+	res.set({
+		'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+		'Pragma': 'no-cache',
+		'Expires': '0'
+	});
 	res.sendFile(path.join(frontendPages, 'dashboard.html'));
 });
+
+// Shop and Cart pages
+app.get('/shop', (req, res) => {
+	res.sendFile(path.join(frontendPages, 'shop.html'));
+});
+app.get('/cart', (req, res) => {
+	res.sendFile(path.join(frontendPages, 'cart.html'));
+});
+
 
 // Clean blog routes without .html extensions
 app.get('/blog', (req, res) => {

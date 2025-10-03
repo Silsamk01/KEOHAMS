@@ -11,7 +11,10 @@
 <body>
   <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom sticky-top">
     <div class="container">
-      <a class="navbar-brand fw-bold" href="/">KEOHAMS</a>
+      <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="/">
+  <img src="/keohamlogo.jpg" alt="KEOHAMS" class="brand-logo" />
+        <span class="d-none d-sm-inline">KEOHAMS</span>
+      </a>
       <div class="ms-auto">
         <a href="#" id="adminSignOut" class="btn btn-outline-secondary btn-sm">Sign out</a>
       </div>
@@ -19,7 +22,7 @@
   </nav>
 
   <main class="container py-4">
-    <h1 class="h4 mb-3">Admin Dashboard</h1>
+    <h1 class="h4 mb-3 text-gradient">Admin Dashboard</h1>
 
     <ul class="nav nav-pills mb-3" id="adminTabs" role="tablist">
       <li class="nav-item" role="presentation">
@@ -45,6 +48,15 @@
       </li>
       <li class="nav-item" role="presentation">
         <button class="nav-link" id="tab-blog" data-bs-toggle="pill" data-bs-target="#pane-blog" type="button" role="tab">Blog</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-notifs" data-bs-toggle="pill" data-bs-target="#pane-notifs" type="button" role="tab">Notifications</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-chats" data-bs-toggle="pill" data-bs-target="#pane-chats" type="button" role="tab">Chats</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-notifs" data-bs-toggle="pill" data-bs-target="#pane-notifs" type="button" role="tab">Notifications</button>
       </li>
     </ul>
 
@@ -271,6 +283,145 @@
                 <button class="btn btn-outline-secondary btn-sm" id="prodPrev">Prev</button>
                 <button class="btn btn-outline-secondary btn-sm" id="prodNext">Next</button>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="pane-notifs" role="tabpanel">
+        <div class="row g-4">
+          <div class="col-lg-4">
+            <div class="card h-100">
+              <div class="card-header">Create Notification</div>
+              <div class="card-body">
+                <form id="notifCreateForm" class="vstack gap-2">
+                  <div>
+                    <label class="form-label">Title</label>
+                    <input type="text" class="form-control" id="nTitle" required>
+                  </div>
+                  <div>
+                    <label class="form-label">Body</label>
+                    <textarea class="form-control" id="nBody" rows="3" required></textarea>
+                  </div>
+                  <div>
+                    <label class="form-label">URL (optional)</label>
+                    <input type="url" class="form-control" id="nUrl" placeholder="https://...">
+                  </div>
+                  <div>
+                    <label class="form-label">Audience</label>
+                    <select id="nAudience" class="form-select">
+                      <option value="ALL">All users</option>
+                      <option value="USER">Single user</option>
+                    </select>
+                  </div>
+                  <div id="nUserWrap" class="d-none">
+                    <label class="form-label">User</label>
+                    <input type="text" id="nUserSearch" class="form-control" placeholder="Search name or email">
+                    <div class="small text-muted mt-1">Select a user from results</div>
+                    <select id="nUserSelect" class="form-select mt-2"></select>
+                  </div>
+                  <button class="btn btn-primary" type="submit">Send</button>
+                </form>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div class="small text-muted">Recent notifications</div>
+              <button class="btn btn-outline-secondary btn-sm" id="refreshNotifs">Refresh</button>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm align-middle">
+                <thead>
+                  <tr>
+                    <th>ID</th><th>Title</th><th>Audience</th><th>User</th><th>Created</th><th></th>
+                  </tr>
+                </thead>
+                <tbody id="notifsTbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="pane-chats" role="tabpanel">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <div class="card h-100">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Threads</span>
+                <button class="btn btn-sm btn-outline-secondary" id="adminChatsRefresh">Refresh</button>
+              </div>
+              <div class="list-group list-group-flush" id="adminThreads"></div>
+            </div>
+          </div>
+          <div class="col-md-8">
+            <div class="card h-100">
+              <div class="card-header d-flex align-items-center justify-content-between">
+                <div id="adminChatHeader">Select a thread</div>
+                <button class="btn btn-sm btn-outline-danger" id="adminChatDeleteBtn" disabled>Delete Thread</button>
+              </div>
+              <div class="card-body" style="max-height:60vh; overflow:auto;" id="adminChatMessages"></div>
+              <div class="card-footer">
+                <div class="input-group">
+                  <input type="text" class="form-control" id="adminChatInput" placeholder="Type a message">
+                  <button class="btn btn-primary" id="adminChatSend">Send</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="pane-notifs" role="tabpanel">
+        <div class="row g-4">
+          <div class="col-lg-4">
+            <div class="card h-100">
+              <div class="card-header">Create Notification</div>
+              <div class="card-body">
+                <form id="notifCreateForm" class="vstack gap-2">
+                  <div>
+                    <label class="form-label">Title</label>
+                    <input type="text" class="form-control" id="nTitle" required>
+                  </div>
+                  <div>
+                    <label class="form-label">Body</label>
+                    <textarea class="form-control" id="nBody" rows="4" required></textarea>
+                  </div>
+                  <div>
+                    <label class="form-label">Audience</label>
+                    <select class="form-select" id="nAudience">
+                      <option value="ALL">All users</option>
+                      <option value="USER">Specific user</option>
+                    </select>
+                  </div>
+                  <div id="nUserWrap" class="d-none">
+                    <label class="form-label">User ID</label>
+                    <input type="number" class="form-control" id="nUserId" min="1">
+                  </div>
+                  <div>
+                    <label class="form-label">URL (optional)</label>
+                    <input type="url" class="form-control" id="nUrl">
+                  </div>
+                  <button class="btn btn-primary" type="submit">Send</button>
+                </form>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div class="small text-muted">Recent notifications</div>
+              <button class="btn btn-outline-secondary btn-sm" id="refreshNotifs">Refresh</button>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm align-middle">
+                <thead>
+                  <tr>
+                    <th>ID</th><th>Title</th><th>Audience</th><th>User</th><th>Created</th><th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="notifsTbody"></tbody>
+              </table>
             </div>
           </div>
         </div>

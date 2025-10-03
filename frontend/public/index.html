@@ -17,7 +17,10 @@
 
   <header class="navbar navbar-expand-lg navbar-light bg-white border-bottom sticky-top">
     <div class="container">
-      <a class="navbar-brand fw-bold" href="#">KEOHAMS</a>
+      <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="#">
+  <img src="/keohamlogo.jpg" alt="KEOHAMS" class="brand-logo" />
+        <span class="d-none d-sm-inline">KEOHAMS</span>
+      </a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
@@ -27,6 +30,7 @@
           <button class="btn btn-primary" type="submit">Search</button>
         </form>
         <ul class="navbar-nav ms-3 align-items-center">
+          <li class="nav-item"><a class="nav-link" href="#about">About</a></li>
           <li class="nav-item"><a class="nav-link" href="/blog">Blog</a></li>
           <li class="nav-item me-2">
             <select class="form-select form-select-sm" id="currencySelect">
@@ -45,17 +49,31 @@
           <li class="nav-item dropdown d-none" id="navSignedIn">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" id="navUserName">Account</a>
             <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item" href="#">Profile</a></li>
-              <li><a class="dropdown-item" href="#">Orders</a></li>
+              <li><a class="dropdown-item" href="/dashboard" id="navProfileLink">Profile</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item" href="#" id="signOutLink">Sign out</a></li>
             </ul>
           </li>
-          <li class="nav-item"><a class="nav-link" href="#">Cart</a></li>
+          <li class="nav-item">
+            <a class="nav-link position-relative" href="/cart" title="Cart">
+              <span class="fs-5">🛒</span>
+              <span id="navCartCount" class="badge rounded-pill text-bg-light ms-1 align-text-top">0</span>
+            </a>
+          </li>
         </ul>
       </div>
     </div>
   </header>
+
+  <!-- Global presence ribbon -->
+  <div class="global-presence text-center border-bottom">
+    <div class="container py-2 d-flex flex-wrap justify-content-center align-items-center gap-2 gap-md-3 small">
+      <span class="text-muted">Registered in</span>
+      <span class="badge bg-white border fw-semibold"><span class="me-1">🇳🇬</span>Nigeria</span>
+      <span class="text-muted">and</span>
+      <span class="badge bg-white border fw-semibold"><span class="me-1">🇨🇳</span>China</span>
+    </div>
+  </div>
 
   <section class="hero hero-bg py-6 py-lg-7">
     <div class="container">
@@ -73,6 +91,31 @@
           <div class="p-4 bg-white shadow-sm rounded-4">
             <h2 class="h5 mb-3">Browse by Category</h2>
             <div class="d-flex flex-wrap gap-2" id="heroCategories"><!-- Filled by JS --></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- About Us -->
+  <section id="about" class="py-5 bg-light">
+    <div class="container">
+      <div class="row align-items-center g-4">
+        <div class="col-lg-6">
+          <h2 class="h4 mb-2 text-gradient">About Keohams Deluxe Enterprises</h2>
+          <div class="d-flex align-items-center gap-2 mb-3 small">
+            <span class="badge bg-white border fw-semibold"><span class="me-1">🇳🇬</span>Nigeria</span>
+            <span class="badge bg-white border fw-semibold"><span class="me-1">🇨🇳</span>China</span>
+          </div>
+          <p>Keohams Deluxe Enterprises is a distinguished Nigerian and Chinese company specializing in the sale of high-quality tailoring materials (general merchandise). With a focus on providing premium fabrics, accessories, and specialty items.</p>
+          <p>The company's motto, <strong>“Style is in the Details”</strong>, encapsulates its dedication to delivering exceptional products that emphasize the importance of meticulous craftsmanship and intricate details in achieving superior style and quality.</p>
+          <p>The brand identity reflects a matured, modern, and luxurious aesthetic, complementing its esteemed reputation within the industry.</p>
+          <p>Keohams Deluxe Enterprises continues to be a preferred choice for tailors, fashion designers, and individuals seeking top-tier tailoring materials in Nigeria.</p>
+        </div>
+        <div class="col-lg-6">
+          <div class="p-4 bg-white shadow-sm rounded-4 text-center">
+            <img src="/keohamlogo.jpg" alt="KEOHAMS" class="img-fluid" style="max-height: 180px; width:auto;" />
+            <div class="mt-3 fst-italic text-gradient">“Style is in the Details.”</div>
           </div>
         </div>
       </div>
@@ -109,6 +152,48 @@
             <div class="icon-circle bg-info-subtle text-info">🛡️</div>
             <h3 class="h6 mt-2 mb-1">Verified Buyers</h3>
             <p class="small text-muted mb-0">KYC verification and secure access.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Global presence cards -->
+  <section class="py-5 global-cards">
+    <div class="container">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h5 m-0">Global presence</h2>
+        <span class="text-muted small">Local compliance · Cross-border expertise</span>
+      </div>
+      <div class="row g-3 g-lg-4">
+        <div class="col-12 col-md-6">
+          <div class="card h-100 shadow-hover rounded-4 border-0">
+            <div class="card-body">
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="fs-4">🇳🇬</span>
+                <h3 class="h6 m-0">Nigeria</h3>
+              </div>
+              <p class="small text-muted mb-2">Registered entity serving West African buyers with localized support.</p>
+              <ul class="small text-muted m-0 ps-3">
+                <li>Local KYC and compliance</li>
+                <li>Payments and currency support (NGN)</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-md-6">
+          <div class="card h-100 shadow-hover rounded-4 border-0">
+            <div class="card-body">
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="fs-4">🇨🇳</span>
+                <h3 class="h6 m-0">China</h3>
+              </div>
+              <p class="small text-muted mb-2">Registered presence with sourcing and export coordination across Asia.</p>
+              <ul class="small text-muted m-0 ps-3">
+                <li>Factory sourcing and QA</li>
+                <li>Logistics and customs support</li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
@@ -229,6 +314,9 @@
               <div class="invalid-feedback" id="signinCaptchaError">Please enter the correct 6-character code.</div>
             </div>
             <button class="btn btn-primary w-100" type="submit">Sign In</button>
+            <div class="text-center mt-2">
+              <a href="/forgot" class="small">Forgot password?</a>
+            </div>
           </form>
         </div>
       </div>

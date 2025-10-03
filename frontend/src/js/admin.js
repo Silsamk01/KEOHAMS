@@ -169,6 +169,7 @@ function wireNav() {
   loadProfile();
   wirePending();
   loadPending();
+  initAdminChat();
 })();
 
 // Pending registrations
@@ -287,6 +288,106 @@ function renderTwofa(enabled) {
     status.textContent = '2FA is not enabled';
     disBtn.classList.add('d-none');
   }
+}
+
+// =========================
+// Admin Chats
+// =========================
+let adminSocket; let currentThreadId = null;
+function adminToken(){ return localStorage.getItem('token'); }
+function ensureAdminSocket(){
+  if (adminSocket && adminSocket.connected) return adminSocket;
+  const t = adminToken(); if (!t) return null;
+  // Load Socket.IO client if not already
+  if (!window.io) {
+    const s = document.createElement('script'); s.src = '/socket.io/socket.io.js'; document.head.appendChild(s);
+    s.onload = ()=> ensureAdminSocket();
+    return null;
+  }
+  adminSocket = window.io('http://localhost:4000', { auth: { token: t } });
+  adminSocket.on('connect_error', (e)=>console.warn('socket admin error', e.message));
+  adminSocket.on('message:new', (payload)=>{ if (payload?.thread_id === currentThreadId) appendAdminMessage(payload.message); });
+  adminSocket.on('admin:thread:new', ()=> refreshAdminThreads());
+  adminSocket.on('admin:message:new', (p)=>{ if (p.thread_id === currentThreadId) {/* already handled via message:new */} else { /* could badge */ } });
+  return adminSocket;
+}
+
+async function fetchJSONAuthed(url, opts={}){ return fetchJSON(url, opts); }
+
+async function refreshAdminThreads(){
+  try {
+    const { data } = await fetchJSONAuthed(`${API_BASE}/chats/admin/threads`);
+    const list = document.getElementById('adminThreads'); if (!list) return;
+    list.innerHTML = '';
+    for (const th of data) {
+      const a = document.createElement('button');
+      a.className = 'list-group-item list-group-item-action text-start';
+      a.innerHTML = `<div class="fw-semibold">${escapeHtml(th.user_name || 'User #'+th.user_id)}</div>
+                     <div class="small text-muted">${escapeHtml(th.product_title || th.subject || 'General chat')}</div>`;
+      a.onclick = ()=> selectAdminThread(th);
+      list.appendChild(a);
+    }
+  } catch (e) { console.error('load threads failed', e); }
+}
+
+async function selectAdminThread(thread){
+  currentThreadId = thread.id;
+  document.getElementById('adminChatHeader').textContent = `${thread.user_name || ('User #'+thread.user_id)} · ${thread.product_title || thread.subject || 'Chat'}`;
+  const delBtn = document.getElementById('adminChatDeleteBtn'); 
+  if (delBtn) { 
+    delBtn.disabled = false; 
+    delBtn.onclick = async () => {
+      if (!currentThreadId) return; 
+      if (!confirm('Permanently delete this thread? This cannot be undone.')) return;
+      try { 
+        await fetchJSONAuthed(`${API_BASE}/chats/admin/threads/${currentThreadId}`, { method: 'DELETE' }); 
+        currentThreadId = null; 
+        document.getElementById('adminChatMessages').innerHTML=''; 
+        document.getElementById('adminChatHeader').textContent='Select a thread'; 
+        delBtn.disabled = true; 
+        await refreshAdminThreads(); 
+      } catch(e){ 
+        alert(e.message || 'Delete failed'); 
+      } 
+    }; 
+  }
+  const res = await fetchJSONAuthed(`${API_BASE}/chats/threads/${thread.id}/messages`);
+  renderAdminMessages(res.data);
+  const s = ensureAdminSocket(); if (s) s.emit('thread:join', { thread_id: thread.id });
+}
+
+function renderAdminMessages(list){
+  const box = document.getElementById('adminChatMessages'); if (!box) return;
+  box.innerHTML = '';
+  list.forEach(m=> appendAdminMessage(m));
+  box.scrollTop = box.scrollHeight;
+}
+
+function appendAdminMessage(m){
+  const box = document.getElementById('adminChatMessages'); if (!box) return;
+  const mine = isAdminMine(m);
+  const wrap = document.createElement('div'); wrap.className = `d-flex ${mine?'justify-content-end':'justify-content-start'}`;
+  const bubble = document.createElement('div'); bubble.className = `px-3 py-2 rounded-3 ${mine?'bg-primary text-white':'bg-light'}`; bubble.style.maxWidth='80%';
+  bubble.innerHTML = `<div class="small">${escapeHtml(m.body)}</div><div class="small text-muted mt-1">${new Date(m.created_at).toLocaleTimeString()}</div>`;
+  wrap.appendChild(bubble); box.appendChild(wrap); box.scrollTop = box.scrollHeight;
+}
+
+function isAdminMine(m){
+  try { const t = JSON.parse(atob((adminToken()||'').split('.')[1])); return t && t.sub === m.sender_id; } catch(_) { return false; }
+}
+
+function initAdminChat(){
+  const btn = document.getElementById('adminChatsRefresh'); if (btn) btn.addEventListener('click', refreshAdminThreads);
+  ensureAdminSocket();
+  refreshAdminThreads();
+  const sendBtn = document.getElementById('adminChatSend'); const input = document.getElementById('adminChatInput');
+  const send = async ()=>{
+    if (!currentThreadId) return; const text = input.value.trim(); if (!text) return; input.value='';
+    try { await fetchJSONAuthed(`${API_BASE}/chats/threads/${currentThreadId}/messages`, { method:'POST', body: JSON.stringify({ body: text }), headers: { 'Content-Type':'application/json' } }); }
+    catch(e){ console.warn('send failed', e); }
+  };
+  if (sendBtn) sendBtn.addEventListener('click', send);
+  if (input) input.addEventListener('keydown', (e)=>{ if (e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); }});
 }
 
 // =========================
@@ -581,7 +682,85 @@ function wireBlog(){
   document.getElementById('refreshBlog')?.addEventListener('click', loadAdminBlog);
 }
 
-document.addEventListener('DOMContentLoaded', ()=>{
-  wireBlog();
-  loadAdminBlog();
-});
+// =========================
+// Notifications (Admin)
+// =========================
+async function loadAdminNotifs(){
+  try {
+    const { data } = await fetchJSON(`${API_BASE}/notifications/admin?page=1&pageSize=50`);
+    const tbody = document.getElementById('notifsTbody'); if (!tbody) return;
+    tbody.innerHTML = '';
+    for (const n of data) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${n.id}</td>
+        <td>${escapeHtml(n.title)}</td>
+        <td><span class="badge ${n.audience==='ALL'?'text-bg-success':'text-bg-primary'}">${n.audience}</span></td>
+        <td>${n.user_id||''}</td>
+        <td>${new Date(n.created_at).toLocaleString()}</td>
+        <td><button class="btn btn-sm btn-outline-danger" data-del-notif data-id="${n.id}">Delete</button></td>
+      `;
+      tbody.appendChild(tr);
+    }
+    document.querySelectorAll('[data-del-notif]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const id = btn.getAttribute('data-id');
+        if (!confirm('Delete this notification?')) return;
+        try { await fetchJSON(`${API_BASE}/notifications/admin/${id}`, { method:'DELETE' }); loadAdminNotifs(); }
+        catch(e){ alert(e.message||'Delete failed'); }
+      });
+    });
+  } catch(e){ console.error('notifs failed', e); }
+}
+
+function wireAdminNotifs(){
+  const form = document.getElementById('notifCreateForm'); if (!form) return;
+  const audienceSel = document.getElementById('nAudience');
+  const userWrap = document.getElementById('nUserWrap');
+  const userSearch = document.getElementById('nUserSearch');
+  const userSelect = document.getElementById('nUserSelect');
+
+  audienceSel.addEventListener('change', ()=>{ userWrap.classList.toggle('d-none', audienceSel.value!=='USER'); });
+
+  async function searchUsers(q){
+    const params = new URLSearchParams({ page: '1', pageSize: '10' });
+    if (q) params.set('q', q);
+    try {
+      const { data } = await fetchJSON(`${API_BASE}/admin/users?${params}`);
+      userSelect.innerHTML = data.map(u=>`<option value="${u.id}">${escapeHtml(u.name||'Unnamed')} · ${escapeHtml(u.email||'')}</option>`).join('');
+    } catch(e){ userSelect.innerHTML=''; }
+  }
+
+  userSearch?.addEventListener('input', debounce(()=>{ searchUsers(userSearch.value.trim()); }, 400));
+
+  form.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const title = document.getElementById('nTitle').value.trim();
+    const body = document.getElementById('nBody').value.trim();
+    const audience = document.getElementById('nAudience').value;
+    const url = document.getElementById('nUrl').value.trim() || null;
+    const user_id = audience==='USER' ? Number(userSelect.value) : null;
+    if (!title || !body) return alert('Title and body are required');
+    if (audience==='USER' && !user_id) return alert('Please select a user');
+    try {
+      await fetchJSON(`${API_BASE}/notifications/admin`, { method:'POST', body: JSON.stringify({ title, body, audience, user_id, url }) });
+      alert('Notification sent');
+      form.reset(); audienceSel.value='ALL'; userWrap.classList.add('d-none'); userSelect.innerHTML='';
+      loadAdminNotifs();
+    } catch(e){ alert(e.message||'Create failed'); }
+  });
+  document.getElementById('refreshNotifs')?.addEventListener('click', loadAdminNotifs);
+}
+
+// Hook into init
+(function(){
+  // after existing init content runs, ensure notifications are wired when tab is present
+  document.addEventListener('DOMContentLoaded', ()=>{
+    if (document.getElementById('pane-notifs')) {
+      wireAdminNotifs();
+      loadAdminNotifs();
+    }
+  });
+})();
+
+function debounce(fn, delay=300){ let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), delay); }; }

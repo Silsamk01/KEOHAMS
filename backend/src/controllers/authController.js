@@ -5,14 +5,14 @@ const Users = require('../models/user');
 const { sign } = require('../utils/jwt');
 const { sendMail } = require('../utils/email');
 
-// simple tokens table for email verification
+// simple tokens table for email verification and password reset
 async function ensureTokensTable() {
   const exists = await db.schema.hasTable('tokens');
   if (!exists) {
     await db.schema.createTable('tokens', (t) => {
       t.increments('id').primary();
       t.integer('user_id').unsigned().notNullable().references('id').inTable('users').onDelete('CASCADE');
-      t.string('type').notNullable(); // 'verify-email'
+      t.string('type').notNullable(); // 'verify-email' | 'password-reset'
       t.string('token').notNullable().unique();
       t.dateTime('expires_at').notNullable();
       t.timestamps(true, true);
@@ -116,4 +116,43 @@ exports.me = async (req, res) => {
     role: user.role,
     email_verified: !!user.email_verified
   });
+};
+
+exports.forgotPassword = async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ message: 'Email required' });
+  const user = await Users.findByEmail(email);
+  // Respond with 200 regardless to prevent user enumeration
+  if (!user) return res.json({ message: 'If an account exists, a reset link has been sent' });
+
+  await ensureTokensTable();
+  const token = crypto.randomBytes(24).toString('hex');
+  const expires = new Date(Date.now() + 1000 * 60 * 30); // 30 minutes
+  await db('tokens').insert({ user_id: user.id, type: 'password-reset', token, expires_at: expires });
+
+  const resetUrl = `${req.protocol}://${req.get('host')}/reset?token=${token}`;
+  try {
+    await sendMail({
+      to: user.email,
+      subject: 'Reset your password',
+      html: `<p>Hello ${user.name || ''},</p><p>Click <a href="${resetUrl}">here</a> to reset your password. This link expires in 30 minutes.</p>`
+    });
+  } catch (e) {
+    console.warn('Reset email send failed:', e.message);
+    console.info('[DEV ONLY] Reset link:', resetUrl);
+  }
+  return res.json({ message: 'If an account exists, a reset link has been sent' });
+};
+
+exports.resetPassword = async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) return res.status(400).json({ message: 'Token and password required' });
+  const row = await db('tokens').where({ token, type: 'password-reset' }).first();
+  if (!row) return res.status(400).json({ message: 'Invalid token' });
+  if (new Date(row.expires_at) < new Date()) return res.status(400).json({ message: 'Token expired' });
+
+  const hash = await bcrypt.hash(password, 10);
+  await Users.updatePassword(row.user_id, hash);
+  await db('tokens').where({ id: row.id }).del();
+  return res.json({ message: 'Password updated successfully' });
 };

@@ -1,8 +1,8 @@
 const Products = require('../models/product');
 
 exports.list = async (req, res) => {
-  const { q, category_id, stock_status, page, pageSize } = req.query;
-  const data = await Products.list({ q, category_id, stock_status, page: Number(page) || 1, pageSize: Number(pageSize) || 20 });
+  const { q, category_id, stock_status, sort, page, pageSize } = req.query;
+  const data = await Products.list({ q, category_id, stock_status, sort, page: Number(page) || 1, pageSize: Number(pageSize) || 20 });
   res.json({ data });
 };
 

@@ -8,4 +8,8 @@ async function findById(id) { return db(TABLE).where({ id }).first(); }
 async function verifyEmail(userId) { return db(TABLE).where({ id: userId }).update({ email_verified: 1 }); }
 async function update(id, changes) { return db(TABLE).where({ id }).update(changes); }
 
-module.exports = { TABLE, create, findByEmail, findById, verifyEmail, update };
+async function updatePassword(id, password_hash) {
+	return db(TABLE).where({ id }).update({ password_hash });
+}
+
+module.exports = { TABLE, create, findByEmail, findById, verifyEmail, update, updatePassword };

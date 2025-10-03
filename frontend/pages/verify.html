@@ -8,16 +8,16 @@
   <link href="/src/css/styles.css" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <meta http-equiv="Cache-Control" content="no-store" />
-  <style>.vh-70{min-height:70vh}</style>
+  <style>.vh-70{min-height:70vh} .text-gradient{background:linear-gradient(135deg, #a07a1e 0%, #cfaddc 25%, #ffe890 45%, #ffd47c 60%, #b18b3e 80%, #916d13 100%);-webkit-background-clip:text;background-clip:text;color:transparent}</style>
   <script type="module" src="/src/js/verify.js"></script>
 </head>
 <body>
   <nav class="navbar navbar-light bg-white border-bottom">
-    <div class="container"><a class="navbar-brand fw-bold" href="/">KEOHAMS</a></div>
+  <div class="container"><a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="/"><img src="/keohamlogo.jpg" alt="KEOHAMS" class="brand-logo" /><span class="d-none d-sm-inline">KEOHAMS</span></a></div>
   </nav>
   <main class="container d-flex align-items-center justify-content-center vh-70">
     <div class="text-center">
-      <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+      <div class="spinner-border" style="color:#2f5337" role="status" aria-hidden="true"></div>
       <div id="status" class="alert alert-info mt-3" role="alert">Verifying your email…</div>
       <p class="text-muted small">If this takes too long, you can close this page and try the link again from your email.</p>
     </div>

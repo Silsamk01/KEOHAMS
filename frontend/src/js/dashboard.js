@@ -100,57 +100,66 @@ async function loadKycStatus() {
   }
 }
 
-function wireNav() {
-  document.querySelectorAll('#dashNav .nav-link').forEach(a => {
-    a.addEventListener('click', (e) => {
-      e.preventDefault();
-      const target = a.getAttribute('data-target');
-      if (a.getAttribute('data-gated') === 'true') {
-        showKycModal();
-        return;
-      }
-      if (target) switchPane(target);
+async function fetchNotifUnread(){
+  try {
+    const { count } = await fetchJSON(`${API_BASE}/notifications/unread-count`);
+    const el = document.getElementById('dashNotifCount'); if (el) el.textContent = String(count);
+  } catch(_){ }
+}
+
+async function loadDashNotifs(){
+  try {
+    const { data } = await fetchJSON(`${API_BASE}/notifications/mine?page=1&pageSize=5`);
+    const list = document.getElementById('dashNotifList'); if (!list) return;
+    list.innerHTML = '';
+    if (!data.length) { list.innerHTML = '<div class="text-muted">No notifications.</div>'; return; }
+    for (const n of data) {
+      const item = document.createElement('div');
+      item.className = 'p-3 bg-white border rounded-3';
+      item.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="fw-semibold">${escapeHtml(n.title)}</div>
+            <div class="text-muted small">${new Date(n.created_at).toLocaleString()}</div>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            ${n.url ? `<a href="${n.url}" class="btn btn-sm btn-primary" target="_blank">Open</a>` : ''}
+            <button class="btn btn-sm btn-outline-secondary" data-read data-id="${n.id}">Mark read</button>
+          </div>
+        </div>
+        <div class="mt-2">${escapeHtml(n.body)}</div>`;
+      list.appendChild(item);
+    }
+    list.querySelectorAll('[data-read]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const id = btn.getAttribute('data-id');
+        try { await fetchJSON(`${API_BASE}/notifications/${id}/read`, { method:'POST', body: JSON.stringify({}) }); btn.closest('.p-3')?.classList.add('opacity-75'); fetchNotifUnread(); }
+        catch(e){ alert(e.message||'Failed'); }
+      });
     });
-  });
-  const goto = document.querySelector('[data-goto-kyc]');
-  if (goto) goto.addEventListener('click', () => { hideKycModal(); switchPane('#pane-kyc'); });
-  document.getElementById('dashSignOut').addEventListener('click', (e)=>{ e.preventDefault(); localStorage.removeItem('token'); window.location.href='/'; });
+  } catch(_){ }
 }
 
-function wireKycForm() {
-  const form = document.getElementById('kycForm');
-  if (!form) return;
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    try {
-      const portrait = document.getElementById('kycPortrait').files[0];
-      const selfie = document.getElementById('kycSelfieVideo').files[0];
-      const idFront = document.getElementById('kycIdFront').files[0];
-      const idBack = document.getElementById('kycIdBack').files[0];
-      if (!portrait || !selfie || !idFront) return alert('Portrait, selfie video and ID front are required');
-      const fd = new FormData();
-      fd.set('portrait', portrait);
-      fd.set('selfie_video', selfie);
-      fd.set('id_front', idFront);
-      if (idBack) fd.set('id_back', idBack);
-      const notes = document.getElementById('kycNotes').value.trim();
-      if (notes) fd.set('notes', notes);
-      const res = await fetch(`${API_BASE}/kyc/submit`, { method: 'POST', headers: { ...authHeaders() }, body: fd });
-      if (!res.ok) throw new Error(await res.text());
-      alert('KYC submitted');
-      await loadKycStatus();
-    } catch (e) { alert(e.message || 'Submit failed'); }
-  });
+function renderCartBadge(){
+  const el = document.getElementById('dashCartCount'); if (!el) return;
+  let count = 0; try { const cart = JSON.parse(localStorage.getItem('cart')||'[]'); count = cart.reduce((a,i)=>a+Number(i.qty||1),0); } catch(_){ }
+  el.textContent = String(count);
 }
 
-(function init(){
-  wireNav();
-  wireKycForm();
-  switchPane('#pane-overview');
-  loadKycStatus();
-  setupKycCamera();
-})();
+function escapeHtml(s){ return s.replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
 
+async function loadOverview(){
+  try {
+    const me = await fetchJSON(`${API_BASE}/auth/me`);
+    const elName = document.getElementById('dashUserName'); 
+    if (elName) elName.textContent = me.name || 'User';
+  } catch(_){ }
+  try {
+    const { count } = await fetchJSON(`${API_BASE}/orders/my/summary`);
+    const el = document.getElementById('dashOrders'); 
+    if (el) el.textContent = String(count);
+  } catch(_){ }
+}
 // =============================
 // KYC Camera Capture (photo/video)
 // =============================
@@ -253,3 +262,158 @@ function setupKycCamera() {
   });
   videoModalEl?.addEventListener('hidden.bs.modal', ()=>{ try { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); } catch(_){ } stopTracks(videoStream); videoStream=null; });
 }
+
+function setupSidebarToggle(){
+  const burger = document.getElementById('dashBurger');
+  const sidebar = document.getElementById('dashSidebar');
+  const overlay = document.getElementById('dashOverlay');
+  if (!burger || !sidebar || !overlay) return;
+  const isMobile = ()=> window.matchMedia('(max-width: 767.98px)').matches;
+  const openMobile = ()=>{ document.body.classList.add('sidebar-open'); overlay.classList.remove('d-none'); };
+  const closeMobile = ()=>{ document.body.classList.remove('sidebar-open'); overlay.classList.add('d-none'); };
+  burger.addEventListener('click', ()=>{
+    if (isMobile()) {
+      if (document.body.classList.contains('sidebar-open')) closeMobile(); else openMobile();
+    } else {
+      sidebar.classList.toggle('d-none');
+    }
+  });
+  overlay.addEventListener('click', closeMobile);
+  window.addEventListener('resize', ()=>{ if (!isMobile()) closeMobile(); });
+}
+
+function wireNav() {
+  document.querySelectorAll('#dashNav .nav-link').forEach(a => {
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      const target = a.getAttribute('data-target');
+      if (a.getAttribute('data-gated') === 'true') {
+        showKycModal();
+        return;
+      }
+      if (target) switchPane(target);
+    });
+  });
+  const goto = document.querySelector('[data-goto-kyc]');
+  if (goto) goto.addEventListener('click', () => { hideKycModal(); switchPane('#pane-kyc'); });
+  document.getElementById('dashSignOut').addEventListener('click', (e)=>{ 
+    e.preventDefault(); 
+    try { localStorage.removeItem('token'); localStorage.removeItem('cart'); } catch(_) {}
+    try { if (history.replaceState) history.replaceState(null, document.title, window.location.pathname + window.location.search); } catch(_){}
+    window.location.replace('/');
+  });
+}
+
+function wireKycForm() {
+  const form = document.getElementById('kycForm');
+  if (!form) return;
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      const portrait = document.getElementById('kycPortrait').files[0];
+      const selfie = document.getElementById('kycSelfieVideo').files[0];
+      const idFront = document.getElementById('kycIdFront').files[0];
+      const idBack = document.getElementById('kycIdBack').files[0];
+      if (!portrait || !selfie || !idFront) return alert('Portrait, selfie video and ID front are required');
+      const fd = new FormData();
+      fd.set('portrait', portrait);
+      fd.set('selfie_video', selfie);
+      fd.set('id_front', idFront);
+      if (idBack) fd.set('id_back', idBack);
+      const notes = document.getElementById('kycNotes').value.trim();
+      if (notes) fd.set('notes', notes);
+      const res = await fetch(`${API_BASE}/kyc/submit`, { method: 'POST', headers: { ...authHeaders() }, body: fd });
+      if (!res.ok) throw new Error(await res.text());
+      alert('KYC submitted');
+      await loadKycStatus();
+    } catch (e) { alert(e.message || 'Submit failed'); }
+  });
+}
+
+// Chat widget init
+import { initChatWidget } from './chat.js';
+import { fetchMyThreads, openExistingThread } from './chat.js';
+import { } from './chat.js';
+
+// ============ Dashboard Chats Pane ============
+async function loadDashChatThreads(){
+  const list = document.getElementById('dashChatThreads'); if (!list) return;
+  list.innerHTML = '';
+  const threads = await fetchMyThreads();
+  if (!threads.length) { list.innerHTML = '<div class="small text-muted p-3">No chats yet.</div>'; return; }
+  threads.forEach(th => {
+    const btn = document.createElement('button');
+    btn.className = 'list-group-item list-group-item-action text-start';
+    btn.innerHTML = `<div class="fw-semibold">${escapeHtml(th.subject || th.product_title || 'Chat')}</div>
+                     <div class="small text-muted">#${th.id}${th.product_title? ' · '+escapeHtml(th.product_title):''}</div>`;
+    btn.onclick = ()=> selectDashChatThread(th);
+    list.appendChild(btn);
+  });
+}
+
+function renderDashChatMessages(list){
+  const box = document.getElementById('dashChatMessagesPane'); if (!box) return;
+  box.innerHTML = '';
+  list.forEach(m => {
+    const wrap = document.createElement('div');
+    const mine = (function _isMine(mm){ try { const t = JSON.parse(atob((localStorage.getItem('token')||'').split('.')[1])); return t && t.sub === mm.sender_id; } catch(_) { return false; } })(m);
+    wrap.className = `d-flex ${mine?'justify-content-end':'justify-content-start'} mb-2`;
+    const bubble = document.createElement('div');
+    bubble.className = `px-3 py-2 rounded-3 ${mine?'bg-primary text-white':'bg-light'}`;
+    bubble.style.maxWidth = '80%';
+    bubble.innerHTML = `<div class="small">${escapeHtml(m.body)}</div><div class="small text-muted mt-1">${new Date(m.created_at).toLocaleTimeString()}</div>`;
+    wrap.appendChild(bubble); box.appendChild(wrap);
+  });
+  box.scrollTop = box.scrollHeight;
+}
+
+async function selectDashChatThread(th){
+  try {
+    document.getElementById('dashChatHeader').textContent = th.subject || th.product_title || 'Chat';
+    const res = await fetch(`${API_BASE}/chats/threads/${th.id}/messages`, { headers: authHeaders() });
+    const j = await res.json(); renderDashChatMessages(j.data||[]);
+    // Also wire the button to open modal chat on demand
+    const btn = document.getElementById('dashChatOpenModal'); if (btn) btn.onclick = ()=> openExistingThread(th.id, { inModal: true });
+  } catch(_){ /* ignore */ }
+}
+
+(function init(){
+  wireNav();
+  wireKycForm();
+  switchPane('#pane-overview');
+  loadKycStatus();
+  setupKycCamera();
+  loadOverview();
+  fetchNotifUnread();
+  loadDashNotifs();
+  renderCartBadge();
+  document.getElementById('dashBellBtn')?.addEventListener('click', (e)=>{ e.preventDefault(); switchPane('#pane-notifications'); loadDashNotifs(); });
+  window.addEventListener('storage', (e)=>{ if (e.key==='cart') renderCartBadge(); });
+  document.addEventListener('cart:changed', renderCartBadge);
+  // Mark all read
+  document.getElementById('dashMarkAll')?.addEventListener('click', async ()=>{
+    try { await fetchJSON(`${API_BASE}/notifications/mark-all-read`, { method:'POST', body: JSON.stringify({}) }); fetchNotifUnread(); loadDashNotifs(); }
+    catch(e){ alert(e.message||'Failed'); }
+  });
+  // Socket live updates for notifications
+  try {
+    if (window.io) {
+      const t = getToken();
+      if (t) {
+        const s = window.io('http://localhost:4000', { auth: { token: t } });
+        s.on('notif:new', ()=>{ fetchNotifUnread(); loadDashNotifs(); });
+      }
+    }
+  } catch(_){ }
+  // Poll unread every 30s
+  setInterval(fetchNotifUnread, 30000);
+  // Guard against back-forward cache showing authed UI after logout
+  window.addEventListener('pageshow', function(event){
+    const token = getToken();
+    if (!token && event.persisted) { window.location.reload(); }
+  });
+  // Setup sidebar toggle
+  setupSidebarToggle();
+  // Initialize chat widget once DOM ready
+  window.addEventListener('DOMContentLoaded', ()=>{ try { initChatWidget(); } catch(_){} });
+})();

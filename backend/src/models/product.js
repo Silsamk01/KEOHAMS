@@ -1,13 +1,17 @@
 const db = require('../config/db');
 const TABLE = 'products';
 
-async function list({ q, category_id, stock_status, page = 1, pageSize = 20 }) {
+async function list({ q, category_id, stock_status, sort, page = 1, pageSize = 20 }) {
   const query = db(TABLE).select('*').where({ active: 1 });
   if (q) query.andWhere('title', 'like', `%${q}%`);
   if (category_id) query.andWhere('category_id', category_id);
   if (stock_status) query.andWhere('stock_status', stock_status);
   const offset = (page - 1) * pageSize;
-  const items = await query.limit(pageSize).offset(offset).orderBy('id', 'desc');
+  // Sorting
+  if (sort === 'price_asc') query.orderBy('price_per_unit', 'asc');
+  else if (sort === 'price_desc') query.orderBy('price_per_unit', 'desc');
+  else query.orderBy('id', 'desc'); // newest default
+  const items = await query.limit(pageSize).offset(offset);
   return items;
 }
 

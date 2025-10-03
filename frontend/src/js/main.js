@@ -40,7 +40,8 @@ const els = {
 				navCreateLink: document.getElementById('navCreateLink'),
 				navSignInLink: document.getElementById('navSignInLink'),
 			navUserName: document.getElementById('navUserName'),
-			signOutLink: document.getElementById('signOutLink')
+			signOutLink: document.getElementById('signOutLink'),
+			cartCount: document.getElementById('navCartCount')
 };
 
 function setYear() {
@@ -190,7 +191,9 @@ function wireEvents() {
 						return;
 					}
 					try { bootstrap.Modal.getInstance(els.signinModal).hide(); } catch(_){}
-					await refreshAuthState();
+					// Redirect customers to their dashboard
+					window.location.href = '/dashboard';
+					return;
 				} catch (err) {
 					const msg = err.message || 'Sign-in failed';
 					if (/captcha|expired|invalid/i.test(msg)) {
@@ -228,7 +231,16 @@ function wireEvents() {
 			els.signOutLink?.addEventListener('click', (e) => {
 				e.preventDefault();
 				clearToken();
-				refreshAuthState();
+				// Clear cart when signing out
+				try { localStorage.removeItem('cart'); window.dispatchEvent(new CustomEvent('cart:changed', { detail:{ items: [] } })); } catch(_) {}
+				// Prevent navigating back to authenticated state
+				try {
+					if (window.history && window.history.replaceState) {
+						window.history.replaceState(null, document.title, window.location.pathname + window.location.search);
+					}
+				} catch(_){}
+				// Force reload to ensure UI updates and no cached auth content
+				window.location.replace('/');
 			});
 }
 
@@ -281,11 +293,26 @@ async function loginWithCaptcha(email, password, captchaToken, captchaAnswer) {
 		refreshAuthState();
 	hydrateCategories();
 	hydrateProducts(true);
+		updateCartBadge();
+		window.addEventListener('cart:changed', updateCartBadge);
 	if (location.hash === '#signin' && els.navSignInLink) {
 		history.replaceState('', document.title, window.location.pathname + window.location.search);
 		setTimeout(async () => { await preloadCaptcha('signin'); new bootstrap.Modal(els.signinModal).show(); }, 100);
 	}
+	// Guard against back navigation showing authed UI when not signed in
+	window.addEventListener('pageshow', function(event){
+		const token = getToken?.();
+		if (!token) {
+			// if page restored from BFCache, force a reload to reflect signed-out state
+			if (event.persisted) { window.location.reload(); return; }
+			// also ensure nav reflects signed-out state
+			refreshAuthState();
+		}
+	});
 })();
+
+function cart_get(){ try { return JSON.parse(localStorage.getItem('cart')||'[]'); } catch(_) { return []; } }
+function updateCartBadge(){ const items = cart_get(); const n = items.reduce((s,i)=>s+Number(i.qty||0),0); if (els.cartCount) els.cartCount.textContent = String(n); }
 
 function drawCaptchaOn(canvas, code) {
 	if (!canvas || !canvas.getContext) return;
