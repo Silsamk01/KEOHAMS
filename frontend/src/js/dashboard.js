@@ -1,6 +1,67 @@
 const API_BASE = 'http://localhost:4000/api';
 let kycApproved = false;
 
+// Ensure unread notification refresh when marking notifications read
+async function fetchNotifUnread(){
+  try {
+    const { count } = await fetchJSON(`${API_BASE}/notifications/unread-count`);
+    document.querySelectorAll('[data-unread-badge]').forEach(b=>{
+      if(count>0){ b.textContent = count; b.classList.remove('d-none'); }
+      else { b.classList.add('d-none'); }
+    });
+  } catch(_) { /* silent */ }
+}
+
+// ===== Profile (Embedded Settings) =====
+function computeAge(dob){
+  if(!dob) return null; const parts = dob.split('-'); if(parts.length!==3) return null; const [y,m,d]=parts.map(Number); const birth=new Date(Date.UTC(y,(m||1)-1,d||1)); if(isNaN(birth)) return null; const now=new Date(); let age= now.getUTCFullYear()-birth.getUTCFullYear(); const md= now.getUTCMonth()-birth.getUTCMonth(); if(md<0 || (md===0 && now.getUTCDate()<birth.getUTCDate())) age--; return age<0?null:age; }
+let settingsLoaded = false;
+async function loadEmbeddedProfile(){
+  try {
+    const p = await fetchJSON(`${API_BASE}/user/profile`);
+    const nameEl = document.getElementById('dPfNameText'); if(nameEl) nameEl.textContent = p.name || '—';
+    const phoneInput = document.getElementById('dPfPhoneInput'); if(phoneInput) phoneInput.value = p.phone || '';
+    const ageEl = document.getElementById('dPfAgeText'); if(ageEl){ const age = computeAge(p.dob); ageEl.textContent = age!=null? String(age):'—'; }
+    // avatar on settings pane
+    if (p.avatar_url) { const av = document.getElementById('dPfAvatar'); if(av) av.src = p.avatar_url; const headerAv = document.getElementById('dashAvatar'); if(headerAv) headerAv.src = p.avatar_url; }
+  } catch(e){ console.warn('Embedded profile load failed', e); }
+}
+
+function wireEmbeddedAvatar(){
+  const input = document.getElementById('dPfAvatarInput'); if(!input) return;
+  const status = document.getElementById('dPfAvatarStatus');
+  input.addEventListener('change', async ()=>{
+    if(!input.files||!input.files[0]) return; const file = input.files[0];
+    if(file.size > 3*1024*1024){ if(status) status.textContent='File too large (max 3MB)'; return; }
+    if(status) status.textContent='Uploading...';
+    try {
+      const fd = new FormData(); fd.append('avatar', file);
+      const res = await fetch(`${API_BASE}/user/profile/avatar`, { method:'POST', headers:{ ...authHeaders() }, body: fd });
+      if(!res.ok) throw new Error(await res.text());
+      const j = await res.json();
+      const av = document.getElementById('dPfAvatar'); if(av && j.avatar_url) av.src = j.avatar_url + '?v=' + Date.now();
+      const headerAv = document.getElementById('dashAvatar'); if(headerAv && j.avatar_url) headerAv.src = j.avatar_url + '?v=' + Date.now();
+      if(status) status.textContent='Updated'; setTimeout(()=>{ if(status) status.textContent=''; },2000);
+    } catch(err){ if(status) status.textContent = err.message || 'Upload failed'; }
+  });
+}
+
+function wireEmbeddedPhoneSave(){
+  const btn = document.getElementById('dPfSaveBtn'); if(!btn) return; const input = document.getElementById('dPfPhoneInput'); const status = document.getElementById('dPfSaveStatus');
+  btn.addEventListener('click', async ()=>{
+    if(!input) return; const phone = input.value.trim(); if(status) status.textContent='Saving...';
+    try { await fetch(`${API_BASE}/user/profile`, { method:'PATCH', headers:{ 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify({ phone }) }); if(status) status.textContent='Saved'; setTimeout(()=>{ if(status) status.textContent=''; },1500); }
+    catch(e){ if(status) status.textContent = e.message || 'Failed'; }
+  });
+}
+
+function ensureSettingsInitialized(){
+  if (settingsLoaded) return; settingsLoaded = true;
+  loadEmbeddedProfile();
+  wireEmbeddedAvatar();
+  wireEmbeddedPhoneSave();
+}
+
 function getToken() { return localStorage.getItem('token'); }
 function authHeaders() {
   const t = getToken();
@@ -18,6 +79,7 @@ function switchPane(id) {
   document.querySelector(id)?.classList.remove('d-none');
   document.querySelectorAll('#dashNav .nav-link').forEach(a => a.classList.remove('active'));
   document.querySelector(`#dashNav .nav-link[data-target="${id}"]`)?.classList.add('active');
+  if (id === '#pane-settings') ensureSettingsInitialized();
 }
 
 function showKycModal() {
@@ -100,13 +162,6 @@ async function loadKycStatus() {
   }
 }
 
-async function fetchNotifUnread(){
-  try {
-    const { count } = await fetchJSON(`${API_BASE}/notifications/unread-count`);
-    const el = document.getElementById('dashNotifCount'); if (el) el.textContent = String(count);
-  } catch(_){ }
-}
-
 async function loadDashNotifs(){
   try {
     const { data } = await fetchJSON(`${API_BASE}/notifications/mine?page=1&pageSize=5`);
@@ -153,12 +208,74 @@ async function loadOverview(){
     const me = await fetchJSON(`${API_BASE}/auth/me`);
     const elName = document.getElementById('dashUserName'); 
     if (elName) elName.textContent = me.name || 'User';
+    if (me.avatar_url) {
+      const av = document.getElementById('dashAvatar');
+      if (av) av.src = me.avatar_url;
+      // Also update any global avatar placeholders for consistency
+      document.querySelectorAll('[data-global-avatar]').forEach(img=>{
+        if (img && img !== av) img.src = me.avatar_url;
+      });
+    }
   } catch(_){ }
   try {
     const { count } = await fetchJSON(`${API_BASE}/orders/my/summary`);
     const el = document.getElementById('dashOrders'); 
     if (el) el.textContent = String(count);
   } catch(_){ }
+}
+
+// =============================
+// Currency Converter
+// =============================
+function setupCurrencyConverter(){
+  const form = document.getElementById('currencyForm');
+  if (!form) return;
+  const selFrom = document.getElementById('ccFrom');
+  const selTo = document.getElementById('ccTo');
+  const resultEl = document.getElementById('ccResult');
+  const amountEl = document.getElementById('ccAmount');
+  const metaEl = document.getElementById('ccRateMeta');
+  const refreshBtn = document.getElementById('ccRefresh');
+
+  async function populateCurrencies(){
+    try {
+      const { data } = await fetchJSON(`${API_BASE}/currency/supported`);
+      const opts = data.map(c=>`<option value="${c}">${c}</option>`).join('');
+      selFrom.innerHTML = opts; selTo.innerHTML = opts;
+      // sensible defaults
+      selFrom.value = 'USD';
+      selTo.value = (data.includes('NGN') ? 'NGN' : data[0]);
+    } catch(_){ }
+  }
+
+  async function convert(){
+    const amt = parseFloat(amountEl.value) || 0;
+    const from = selFrom.value;
+    const to = selTo.value;
+    if (!amt || amt < 0) { resultEl.textContent = 'Enter a valid amount'; return; }
+    resultEl.textContent = 'Converting…';
+    try {
+      const resp = await fetch(`${API_BASE}/currency/convert?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&amount=${encodeURIComponent(amt)}`, { headers: authHeaders() });
+      if (resp.status === 401) {
+        resultEl.innerHTML = '<span class="text-danger">Session expired. Please sign in again.</span>';
+        setTimeout(()=>{ try { localStorage.removeItem('token'); } catch(_){} window.location.href='/?#signin'; }, 1200);
+        return;
+      }
+      if (!resp.ok) {
+        const txt = await resp.text();
+        throw new Error(txt || `HTTP ${resp.status}`);
+      }
+      const j = await resp.json();
+      const { result, rate } = j;
+      resultEl.innerHTML = `${amt.toLocaleString(undefined,{maximumFractionDigits:4})} ${from} = <strong>${Number(result).toLocaleString(undefined,{maximumFractionDigits:4})} ${to}</strong>`;
+      metaEl.style.display = 'block';
+      metaEl.textContent = `Rate: 1 ${from} = ${rate.toLocaleString(undefined,{maximumFractionDigits:6})} ${to}`;
+    } catch(e){ resultEl.textContent = e.message || 'Conversion failed'; }
+  }
+
+  form.addEventListener('submit', (e)=>{ e.preventDefault(); convert(); });
+  refreshBtn?.addEventListener('click', (e)=>{ e.preventDefault(); convert(); });
+  populateCurrencies().then(()=> convert());
 }
 // =============================
 // KYC Camera Capture (photo/video)
@@ -285,13 +402,15 @@ function setupSidebarToggle(){
 function wireNav() {
   document.querySelectorAll('#dashNav .nav-link').forEach(a => {
     a.addEventListener('click', (e) => {
-      e.preventDefault();
       const target = a.getAttribute('data-target');
+      // Only intercept internal pane navigation links (those with data-target)
+      if (!target) return; // allow normal navigation for /chat, /blog, etc.
+      e.preventDefault();
       if (a.getAttribute('data-gated') === 'true') {
         showKycModal();
         return;
       }
-      if (target) switchPane(target);
+      switchPane(target);
     });
   });
   const goto = document.querySelector('[data-goto-kyc]');
@@ -344,8 +463,15 @@ async function loadDashChatThreads(){
   threads.forEach(th => {
     const btn = document.createElement('button');
     btn.className = 'list-group-item list-group-item-action text-start';
-    btn.innerHTML = `<div class="fw-semibold">${escapeHtml(th.subject || th.product_title || 'Chat')}</div>
-                     <div class="small text-muted">#${th.id}${th.product_title? ' · '+escapeHtml(th.product_title):''}</div>`;
+    btn.dataset.threadId = th.id;
+    btn.innerHTML = `<div class="d-flex justify-content-between align-items-start">
+        <div class="flex-grow-1">
+          <div class="fw-semibold thread-subject">${escapeHtml(th.subject || th.product_title || 'Chat')}</div>
+          <div class="small text-muted thread-meta" data-meta>#${th.id}${th.product_title? ' · '+escapeHtml(th.product_title):''}</div>
+          <div class="small text-truncate thread-preview" style="max-width:240px"></div>
+        </div>
+        <span class="badge rounded-pill bg-primary d-none" data-unread>0</span>
+      </div>`;
     btn.onclick = ()=> selectDashChatThread(th);
     list.appendChild(btn);
   });
@@ -377,14 +503,41 @@ async function selectDashChatThread(th){
   } catch(_){ /* ignore */ }
 }
 
+// Handle thread:update push events (called from chat.js socket once we expose a hook)
+window.__chatThreadUpdate = function updateThreadMeta(payload){
+  const list = document.getElementById('dashChatThreads'); if (!list) return;
+  const btn = list.querySelector(`button[data-thread-id='${payload.thread_id}']`);
+  if (btn) {
+    const preview = btn.querySelector('.thread-preview');
+    if (preview && payload.last_message_body) preview.textContent = payload.last_message_body.slice(0,80);
+    const badge = btn.querySelector('[data-unread]');
+    if (badge && typeof payload.unread === 'number') {
+      if (payload.unread > 0) { badge.textContent = String(payload.unread); badge.classList.remove('d-none'); }
+      else badge.classList.add('d-none');
+    }
+  }
+};
+
 (function init(){
   wireNav();
   wireKycForm();
-  switchPane('#pane-overview');
+  // Support deep linking via ?pane=notifications|settings|kyc|orders|chats
+  const params = new URLSearchParams(location.search);
+  const pane = (params.get('pane')||'overview').toLowerCase();
+  const paneMap = {
+    overview: '#pane-overview',
+    notifications: '#pane-notifications',
+    settings: '#pane-settings',
+    kyc: '#pane-kyc',
+    orders: '#pane-orders',
+    chats: '#pane-chats'
+  };
+  const targetPane = paneMap[pane] || '#pane-overview';
+  switchPane(targetPane);
   loadKycStatus();
   setupKycCamera();
   loadOverview();
-  fetchNotifUnread();
+  setupCurrencyConverter();
   loadDashNotifs();
   renderCartBadge();
   document.getElementById('dashBellBtn')?.addEventListener('click', (e)=>{ e.preventDefault(); switchPane('#pane-notifications'); loadDashNotifs(); });
@@ -392,7 +545,7 @@ async function selectDashChatThread(th){
   document.addEventListener('cart:changed', renderCartBadge);
   // Mark all read
   document.getElementById('dashMarkAll')?.addEventListener('click', async ()=>{
-    try { await fetchJSON(`${API_BASE}/notifications/mark-all-read`, { method:'POST', body: JSON.stringify({}) }); fetchNotifUnread(); loadDashNotifs(); }
+  try { await fetchJSON(`${API_BASE}/notifications/mark-all-read`, { method:'POST', body: JSON.stringify({}) }); loadDashNotifs(); }
     catch(e){ alert(e.message||'Failed'); }
   });
   // Socket live updates for notifications
@@ -401,12 +554,11 @@ async function selectDashChatThread(th){
       const t = getToken();
       if (t) {
         const s = window.io('http://localhost:4000', { auth: { token: t } });
-        s.on('notif:new', ()=>{ fetchNotifUnread(); loadDashNotifs(); });
+  s.on('notif:new', ()=>{ loadDashNotifs(); });
       }
     }
   } catch(_){ }
   // Poll unread every 30s
-  setInterval(fetchNotifUnread, 30000);
   // Guard against back-forward cache showing authed UI after logout
   window.addEventListener('pageshow', function(event){
     const token = getToken();
@@ -416,4 +568,7 @@ async function selectDashChatThread(th){
   setupSidebarToggle();
   // Initialize chat widget once DOM ready
   window.addEventListener('DOMContentLoaded', ()=>{ try { initChatWidget(); } catch(_){} });
+  // Chat FAB should open chats pane instead of directly modal
+  const fab = document.getElementById('chatFab');
+  if (fab) fab.addEventListener('click', (e)=>{ e.preventDefault(); switchPane('#pane-chats'); loadDashChatThreads(); });
 })();

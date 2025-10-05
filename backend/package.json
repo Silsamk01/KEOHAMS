@@ -7,9 +7,11 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "dotenv -e .env -- nodemon src/server.js",
     "start": "node src/server.js",
+    "start:cluster": "node src/cluster.js",
     "db:create": "node ./scripts/createDatabase.js",
     "migrate": "knex migrate:latest",
-    "rollback": "knex migrate:rollback"
+    "rollback": "knex migrate:rollback",
+    "build:frontend": "node ./scripts/buildFrontend.js"
   },
   "keywords": [],
   "author": "",
@@ -38,10 +40,13 @@
     "socket.io": "^4.8.1",
     "speakeasy": "^2.0.0",
     "uuid": "^13.0.0",
-    "xss-clean": "^0.1.4"
+    "xss-clean": "^0.1.4",
+    "pino": "^9.3.0"
   },
   "devDependencies": {
     "dotenv-cli": "^10.0.0",
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.10",
+    "esbuild": "^0.24.0",
+    "pino-pretty": "^11.2.2"
   }
 }

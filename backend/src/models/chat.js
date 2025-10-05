@@ -52,15 +52,30 @@ async function addMessage({ thread_id, sender_id, body }) {
 }
 
 async function listMessages(thread_id, { limit = 100, beforeId, viewer_id } = {}) {
-  let q = db(MESSAGES)
-    .leftJoin({ mh: MSG_HIDES }, function(){ this.on('mh.message_id', '=', `${MESSAGES}.id`).andOn('mh.user_id', '=', db.raw('?', [viewer_id||0])); })
-    .where(`${MESSAGES}.thread_id`, thread_id)
-    .whereNull('mh.id')
-    .select(`${MESSAGES}.*`)
-    .orderBy(`${MESSAGES}.id`, 'desc');
-  if (beforeId) q = q.andWhere('id', '<', beforeId);
-  const rows = await q.limit(limit);
-  return rows.reverse();
+  // Try primary query including hide table; if table not yet migrated, fallback gracefully
+  try {
+    let q = db(MESSAGES)
+      .leftJoin({ mh: MSG_HIDES }, function(){ this.on('mh.message_id', '=', `${MESSAGES}.id`).andOn('mh.user_id', '=', db.raw('?', [viewer_id||0])); })
+      .where(`${MESSAGES}.thread_id`, thread_id)
+      .whereNull('mh.id')
+      .select(`${MESSAGES}.*`)
+      .orderBy(`${MESSAGES}.id`, 'desc');
+    if (beforeId) q = q.andWhere('id', '<', beforeId);
+    const rows = await q.limit(limit);
+    return rows.reverse();
+  } catch (e) {
+    if (e && (e.code === 'ER_NO_SUCH_TABLE' || /no such table/i.test(e.message))) {
+      // Fallback query without hide filtering
+      let q2 = db(MESSAGES)
+        .where(`${MESSAGES}.thread_id`, thread_id)
+        .select('*')
+        .orderBy('id', 'desc');
+      if (beforeId) q2 = q2.andWhere('id', '<', beforeId);
+      const rows = await q2.limit(limit);
+      return rows.reverse();
+    }
+    throw e;
+  }
 }
 
 async function hideMessage({ message_id, user_id }) {

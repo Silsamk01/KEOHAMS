@@ -2,6 +2,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const app = require('./app');
 const { verify } = require('./utils/jwt');
+const logger = require('./utils/logger');
 require('dotenv').config();
 
 const PORT = process.env.PORT || 4000;
@@ -41,15 +42,33 @@ io.on('connection', (socket) => {
 
   // Mirror ping/pong for diagnostics
   socket.on('ping', () => socket.emit('pong'));
+
+  // Typing indicators
+  socket.on('typing:start', ({ thread_id }) => {
+    if (!thread_id) return;
+    // Broadcast to others in the thread room
+    socket.to(`thread:${thread_id}`).emit('typing:start', { thread_id, user_id: userId });
+  });
+  socket.on('typing:stop', ({ thread_id }) => {
+    if (!thread_id) return;
+    socket.to(`thread:${thread_id}`).emit('typing:stop', { thread_id, user_id: userId });
+  });
 });
 
 server.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
-  // Verify SMTP transport once on boot (non-fatal)
+  logger.info({ port: PORT }, 'Server listening');
   try {
     const { verifyTransport } = require('./utils/email');
-    verifyTransport().then(() => console.log('SMTP: transport OK')).catch((e)=> console.warn('SMTP: verify failed -', e.message));
-  } catch (e) {
-    console.warn('SMTP: not configured');
-  }
+    verifyTransport()
+      .then(() => logger.info('SMTP transport OK'))
+      .catch((e)=> logger.warn({ err: e }, 'SMTP verify failed'));
+  } catch (e) { logger.warn('SMTP not configured'); }
+});
+
+process.on('unhandledRejection', (reason) => {
+  logger.error({ err: reason }, 'Unhandled Rejection');
+});
+process.on('uncaughtException', (err) => {
+  logger.fatal({ err }, 'Uncaught Exception');
+  // Optionally: graceful shutdown
 });

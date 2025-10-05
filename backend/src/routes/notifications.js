@@ -8,6 +8,7 @@ router.get('/mine', requireAuth, asyncHandler(ctrl.listMine));
 router.get('/unread-count', requireAuth, asyncHandler(ctrl.unreadCount));
 router.post('/:id/read', requireAuth, asyncHandler(ctrl.markRead));
 router.post('/mark-all-read', requireAuth, asyncHandler(ctrl.markAllRead));
+router.delete('/:id', requireAuth, asyncHandler(ctrl.deleteMine));
 
 // admin
 router.get('/admin', requireAuth, requireRole('ADMIN'), asyncHandler(ctrl.adminList));

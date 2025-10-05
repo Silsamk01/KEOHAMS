@@ -12,4 +12,8 @@ async function updatePassword(id, password_hash) {
 	return db(TABLE).where({ id }).update({ password_hash });
 }
 
-module.exports = { TABLE, create, findByEmail, findById, verifyEmail, update, updatePassword };
+async function updateAvatar(id, avatar_url) {
+  return db(TABLE).where({ id }).update({ avatar_url });
+}
+
+module.exports = { TABLE, create, findByEmail, findById, verifyEmail, update, updatePassword, updateAvatar };

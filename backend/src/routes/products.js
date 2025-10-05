@@ -19,24 +19,15 @@ router.post('/:id/inquiry', requireAuth, asyncHandler(async (req, res) => {
 	const product = await db('products').where({ id }).first();
 	if (!product) return res.status(404).json({ message: 'Product not found' });
 	const user = await db('users').where({ id: req.user.sub }).first();
-	const mailTo = (process.env.ADMIN_EMAIL || '').trim();
-	// If ADMIN_EMAIL is not configured or looks like a placeholder, skip SMTP to avoid 550s
-	if (!mailTo || /@example\.com$/i.test(mailTo)) {
-		return res.json({ message: 'Inquiry received' });
-	}
-	try {
-		await sendMail({
-			to: mailTo,
-			subject: `Product inquiry: ${product.title} (#${product.id})`,
-			html: `<p><strong>From:</strong> ${user?.name || 'User'} (${user?.email})</p>
+	const mailTo = process.env.ADMIN_EMAIL || 'admin@example.com';
+	await sendMail({
+		to: mailTo,
+		subject: `Product inquiry: ${product.title} (#${product.id})`,
+		html: `<p><strong>From:</strong> ${user?.name || 'User'} (${user?.email})</p>
 					 <p><strong>Product:</strong> ${product.title} (ID ${product.id})</p>
 					 <p><strong>Message:</strong></p><p>${(message||'').replace(/</g,'&lt;')}</p>`
-		});
-		res.json({ message: 'Inquiry sent' });
-	} catch (e) {
-		// Avoid surfacing SMTP details to the user; acknowledge receipt
-		res.json({ message: 'Inquiry received' });
-	}
+	});
+	res.json({ message: 'Inquiry sent' });
 }));
 
 module.exports = router;

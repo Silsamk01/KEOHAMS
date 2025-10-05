@@ -19,8 +19,16 @@ const kycRoutes = require('./routes/kyc');
 const ordersRoutes = require('./routes/orders');
 const notificationsRoutes = require('./routes/notifications');
 const chatRoutes = require('./routes/chats');
+const userRoutes = require('./routes/user');
+const currencyRoutes = require('./routes/currency');
+const contactRoutes = require('./routes/contact');
+const adminContactRoutes = require('./routes/adminContact');
+const adminNotifReadRoutes = require('./routes/adminNotificationReads');
+const { cache } = require('./middlewares/cache');
 
 const app = express();
+app.set('etag', 'strong'); // strong ETags for better cache validation
+app.set('trust proxy', 1); // behind reverse proxy / load balancer
 
 // Security & common middleware
 app.use(helmet());
@@ -70,27 +78,46 @@ app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 // Note: xss-clean is incompatible with Express 5 (it reassigns req.query). We'll add a safe sanitizer later.
-app.use(compression());
+app.use(compression({ threshold: 1024 })); // compress responses >1KB
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
-// Rate limits (basic)
+// Rate limits (basic & targeted)
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
+const notifLimiter = rateLimit({ windowMs: 60 * 1000, limit: 300, standardHeaders: true, legacyHeaders: false });
+const chatLimiter = rateLimit({ windowMs: 60 * 1000, limit: 200, standardHeaders: true, legacyHeaders: false });
 app.use('/api/auth', authLimiter);
+app.use('/api/notifications', notifLimiter);
+app.use('/api/chats', chatLimiter);
 
 // Routes
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/categories', categoryRoutes);
-app.use('/api/products', productRoutes);
+// Cached GET heavy-read endpoints (short TTL)
+app.use('/api/categories', cache(5 * 60 * 1000), categoryRoutes); // 5 min
+app.use('/api/products', cache(30 * 1000), productRoutes); // 30s (list pagination still dynamic via query cache key)
 app.use('/api/admin', adminRoutes);
 app.use('/api/kyc', kycRoutes);
-app.use('/api/blog', blogRoutes);
+app.use('/api/blog', cache(60 * 1000), blogRoutes);
 app.use('/api/orders', ordersRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/chats', chatRoutes);
+app.use('/api/currency', cache(5 * 60 * 1000), currencyRoutes);
+app.use('/api/user', userRoutes);
+app.use('/api/contact', contactRoutes);
+app.use('/api/admin/contact', adminContactRoutes);
+app.use('/api/admin/notification-read-events', adminNotifReadRoutes);
 
-// Static for uploaded media
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+// Static for uploaded media (support both backend/uploads and backend/src/uploads just in case)
+const uploadsPrimary = path.join(__dirname, '..', 'uploads');
+const uploadsAlt = path.join(__dirname, 'uploads'); // this is backend/src/uploads
+app.use('/uploads', (req, res, next) => {
+	// try primary first, fallback to alt
+	express.static(uploadsPrimary)(req, res, (err) => {
+		if (err) return next(err);
+		// If not found in primary, attempt alt
+		express.static(uploadsAlt)(req, res, next);
+	});
+});
 // Serve company logo from repo root
 app.get('/keohamlogo.jpg', (req, res) => {
 	res.sendFile(path.join(__dirname, '..', '..', 'keohamlogo.jpg'));
@@ -147,12 +174,40 @@ app.get('/dashboard', (req, res) => {
 	res.sendFile(path.join(frontendPages, 'dashboard.html'));
 });
 
+// Settings clean route (serve settings page)
+app.get('/settings', (req, res) => {
+  res.set({
+    'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+    'Pragma': 'no-cache',
+    'Expires': '0'
+  });
+  res.sendFile(path.join(frontendPages, 'settings.html'));
+});
+
 // Shop and Cart pages
 app.get('/shop', (req, res) => {
 	res.sendFile(path.join(frontendPages, 'shop.html'));
 });
 app.get('/cart', (req, res) => {
 	res.sendFile(path.join(frontendPages, 'cart.html'));
+});
+
+// About & Contact pages (public)
+app.get('/about', (req, res) => {
+  res.sendFile(path.join(frontendPages, 'about.html'));
+});
+app.get('/contact', (req, res) => {
+  res.sendFile(path.join(frontendPages, 'contact.html'));
+});
+
+// Full-page Chat
+app.get('/chat', (req, res) => {
+	res.set({
+		'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+		'Pragma': 'no-cache',
+		'Expires': '0'
+	});
+	res.sendFile(path.join(frontendPages, 'chat.html'));
 });
 
 

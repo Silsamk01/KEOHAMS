@@ -159,6 +159,7 @@ function wireNav() {
 (async function init(){
   try { await requireAdminOrRedirect(); } catch { return; }
   wireNav();
+  initSidebarToggle();
   loadStats();
   loadUsers();
   loadKyc();
@@ -170,7 +171,32 @@ function wireNav() {
   wirePending();
   loadPending();
   initAdminChat();
+  initContactMessages();
 })();
+
+// =========================
+// Sidebar Toggle (responsive)
+// =========================
+function initSidebarToggle(){
+  const toggleBtn = document.getElementById('sidebarToggle');
+  const sidebar = document.getElementById('adminSidebar');
+  if (!toggleBtn || !sidebar) return;
+  const close = ()=>{ sidebar.classList.remove('open'); document.body.classList.remove('sidebar-open'); };
+  const open = ()=>{ sidebar.classList.add('open'); document.body.classList.add('sidebar-open'); };
+  toggleBtn.addEventListener('click', ()=>{ sidebar.classList.contains('open') ? close() : open(); });
+  // Close when selecting a tab (on small screens)
+  sidebar.querySelectorAll('[data-bs-toggle="pill"]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ if (window.innerWidth < 992) close(); });
+  });
+  // Close on ESC
+  document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') close(); });
+  // Click outside to close (overlay effect via box-shadow) – detect if click not inside sidebar
+  document.addEventListener('click', (e)=>{
+    if (!sidebar.classList.contains('open')) return;
+    if (sidebar.contains(e.target) || e.target === toggleBtn) return;
+    close();
+  });
+}
 
 // Pending registrations
 const pendingState = { page: 1, pageSize: 10, q: '' };
@@ -309,7 +335,82 @@ function ensureAdminSocket(){
   adminSocket.on('message:new', (payload)=>{ if (payload?.thread_id === currentThreadId) appendAdminMessage(payload.message); });
   adminSocket.on('admin:thread:new', ()=> refreshAdminThreads());
   adminSocket.on('admin:message:new', (p)=>{ if (p.thread_id === currentThreadId) {/* already handled via message:new */} else { /* could badge */ } });
+  // When any thread meta updates (e.g., last message body/time) refresh list incrementally
+  adminSocket.on('thread:update', (p)=>{
+    if (!p || !p.thread_id) return;
+    // Lightweight in-place update: if current thread list rendered, update that item's preview text
+    try {
+      const list = document.getElementById('adminThreads');
+      if (list) {
+        const items = Array.from(list.children);
+        for (const it of items) {
+          // We embedded subject/product title inside; can't easily map thread id without storing dataset.
+          // Improvement: store thread id as dataset for each node.
+        }
+      }
+    } catch(_){ }
+    // Simpler approach: refresh entire thread list (fast for small counts)
+    refreshAdminThreads();
+  });
+  // User received a new message (user:message:new is emitted only to users; but admin gets admin:message:new for user messages). Here we could refresh as well.
+  adminSocket.on('user:message:new', ()=> refreshAdminThreads());
+  // Notification read events from users
+  adminSocket.on('notif:read', (p)=>{
+    try { console.log('User read notification', p); } catch(_){ }
+    pushNotifReadEvent({ type:'single', user_id: p?.user_id, ids: p?.notification_id?[p.notification_id]:[] });
+  });
+  adminSocket.on('notif:read:bulk', (p)=>{
+    try { console.log('User bulk read notifications', p); } catch(_){ }
+    pushNotifReadEvent({ type:'bulk', user_id: p?.user_id, ids: p?.notification_ids||[] });
+  });
   return adminSocket;
+}
+
+// =========================
+// Recent Notification Read Activity Panel
+// =========================
+const notifReadEvents = [];
+function pushNotifReadEvent(ev){
+  if (!ev || !ev.user_id) return;
+  notifReadEvents.unshift({ ts: Date.now(), ...ev });
+  if (notifReadEvents.length > 30) notifReadEvents.length = 30;
+  renderNotifReadEvents();
+}
+
+function renderNotifReadEvents(){
+  const tbody = document.getElementById('notifReadsTbody');
+  const badge = document.getElementById('notifReadsCount');
+  if (badge) badge.textContent = `${notifReadEvents.length} event${notifReadEvents.length!==1?'s':''}`;
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  for (const ev of notifReadEvents){
+    const tr = document.createElement('tr');
+    const time = new Date(ev.ts).toLocaleTimeString();
+    const idsText = ev.ids && ev.ids.length ? (ev.ids.length > 5 ? ev.ids.slice(0,5).join(', ')+` +${ev.ids.length-5}`: ev.ids.join(', ')) : '—';
+    tr.innerHTML = `<td>${time}</td><td>${ev.user_id}</td><td>${ev.type}</td><td>${idsText}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+// Clear button wiring (after DOM ready). We'll attempt immediate binding in case element exists.
+(function wireNotifReadsClear(){
+  const btn = document.getElementById('notifReadsClear');
+  if (!btn) return;
+  btn.addEventListener('click', ()=>{ notifReadEvents.length = 0; renderNotifReadEvents(); });
+})();
+async function hydrateNotifReadEvents(){
+  try {
+    const res = await fetchJSON(`${API_BASE}/admin/notification-read-events?limit=30`);
+    if (res?.data && Array.isArray(res.data)){
+      notifReadEvents.length = 0;
+      for (const row of res.data){
+        notifReadEvents.push({ ts: new Date(row.created_at).getTime(), user_id: row.user_id, type:'single', ids: [row.notification_id] });
+      }
+      // Sort newest first just in case
+      notifReadEvents.sort((a,b)=>b.ts-a.ts);
+      renderNotifReadEvents();
+    }
+  } catch(e){ /* silent */ }
 }
 
 async function fetchJSONAuthed(url, opts={}){ return fetchJSON(url, opts); }
@@ -713,6 +814,7 @@ async function loadAdminNotifs(){
   } catch(e){ console.error('notifs failed', e); }
 }
 
+
 function wireAdminNotifs(){
   const form = document.getElementById('notifCreateForm'); if (!form) return;
   const audienceSel = document.getElementById('nAudience');
@@ -760,7 +862,110 @@ function wireAdminNotifs(){
       wireAdminNotifs();
       loadAdminNotifs();
     }
+    // Hydrate persisted notification read activity
+    hydrateNotifReadEvents();
   });
 })();
 
 function debounce(fn, delay=300){ let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), delay); }; }
+
+// =========================
+// Contact Messages (Admin)
+// =========================
+const contactState = { page:1, pageSize:10, filter:'all', loading:false, current:null, cache:new Map() };
+
+async function loadContactMessages(){
+  if (contactState.loading) return; contactState.loading=true;
+  const params = new URLSearchParams({ page:String(contactState.page), pageSize:String(contactState.pageSize) });
+  if (contactState.filter==='unread') params.set('unread','true');
+  const metaEl = document.getElementById('contactMeta'); if (metaEl) metaEl.textContent='Loading...';
+  try {
+    const res = await fetchJSON(`${API_BASE}/admin/contact?${params}`);
+    renderContactList(res);
+  } catch(e){ console.error('contact load failed', e); renderContactList({ data:[], page:contactState.page, pageSize:contactState.pageSize, total:0 }); }
+  finally { contactState.loading=false; }
+}
+
+function renderContactList({ data=[], page, pageSize, total }){
+  const tbody = document.getElementById('contactTbody'); if(!tbody) return;
+  tbody.innerHTML='';
+  data.forEach(row=>{
+    contactState.cache.set(row.id, row);
+    const tr = document.createElement('tr');
+    tr.className = 'contact-row';
+    if (!row.is_read) tr.classList.add('table-warning');
+    tr.dataset.id = row.id;
+    const subj = escapeHtml(truncate(row.subject||'', 60));
+    const name = escapeHtml(row.name||'');
+    const email = escapeHtml(row.email||'');
+    const when = new Date(row.created_at).toLocaleString();
+    tr.innerHTML = `<td>${row.id}</td><td>${name}</td><td>${email}</td><td class="${row.is_read?'':'fw-semibold'}">${subj}</td><td><span class="small text-muted">${when}</span></td><td><button class="btn btn-sm btn-outline-primary" data-open>Open</button></td>`;
+    tbody.appendChild(tr);
+  });
+  if (!data.length) {
+    const tr = document.createElement('tr'); tr.innerHTML = `<td colspan="6" class="text-muted small">No messages</td>`; tbody.appendChild(tr);
+  }
+  // meta & total
+  const start = (page-1)*pageSize + 1; const end = Math.min(page*pageSize, total);
+  const metaEl = document.getElementById('contactMeta'); if (metaEl) metaEl.textContent = total? `${start}-${end}` : '0';
+  const totalEl = document.getElementById('contactTotal'); if (totalEl) totalEl.textContent = `Total: ${total}`;
+  // buttons
+  document.getElementById('contactPrev')?.toggleAttribute('disabled', page<=1);
+  document.getElementById('contactNext')?.toggleAttribute('disabled', end>=total);
+  // row events
+  tbody.querySelectorAll('tr.contact-row').forEach(tr=>{
+    tr.addEventListener('click', (e)=>{ if (e.target.closest('[data-open]') || e.currentTarget===tr) { openContactDetail(Number(tr.dataset.id)); } });
+  });
+}
+
+async function openContactDetail(id){
+  let row = contactState.cache.get(id);
+  const card = document.getElementById('contactDetailCard'); if (!card) return;
+  // optimistic show if cached
+  if (row){ contactState.current = row; updateContactDetail(row); }
+  card.style.display='block';
+  // fetch latest details
+  try { const { data } = await fetchJSON(`${API_BASE}/admin/contact/${id}`); contactState.cache.set(id, data); contactState.current = data; updateContactDetail(data); highlightContactRow(id); }
+  catch(e){ console.error('detail failed', e); }
+}
+
+function updateContactDetail(row){
+  document.getElementById('contactDetailSubject').textContent = row.subject || '(No subject)';
+  const meta = `${row.name||'Anon'} • ${row.email||''} • ${new Date(row.created_at).toLocaleString()}${row.is_read?'':' • Unread'}`;
+  document.getElementById('contactDetailMeta').textContent = meta;
+  document.getElementById('contactDetailBody').textContent = row.body || '';
+  const btn = document.getElementById('contactMarkRead'); if (btn){ btn.disabled = !!row.is_read; }
+}
+
+function highlightContactRow(id){
+  document.querySelectorAll('#contactTbody tr').forEach(tr=> tr.classList.remove('table-active'));
+  const tr = document.querySelector(`#contactTbody tr[data-id="${id}"]`); if (tr) tr.classList.add('table-active');
+}
+
+async function markCurrentContactRead(){
+  if (!contactState.current || contactState.current.is_read) return;
+  const id = contactState.current.id;
+  try { const { data } = await fetchJSON(`${API_BASE}/admin/contact/${id}/read`, { method:'POST', body: JSON.stringify({}) }); contactState.cache.set(id, data); contactState.current = data; updateContactDetail(data); // update row
+    const tr = document.querySelector(`#contactTbody tr[data-id="${id}"]`); if (tr){ tr.classList.remove('table-warning'); const subjCell = tr.children[3]; subjCell?.classList.remove('fw-semibold'); }
+  } catch(e){ alert(e.message||'Mark read failed'); }
+}
+
+function hideContactDetail(){ const card = document.getElementById('contactDetailCard'); if (card) card.style.display='none'; contactState.current=null; }
+
+function initContactMessages(){
+  if (!document.getElementById('pane-contact')) return;
+  document.getElementById('contactFilter')?.addEventListener('change', (e)=>{ contactState.filter = e.target.value; contactState.page=1; loadContactMessages(); });
+  document.getElementById('contactRefresh')?.addEventListener('click', ()=> loadContactMessages());
+  document.getElementById('contactPrev')?.addEventListener('click', ()=>{ if (contactState.page>1){ contactState.page--; loadContactMessages(); }});
+  document.getElementById('contactNext')?.addEventListener('click', ()=>{ contactState.page++; loadContactMessages(); });
+  document.getElementById('contactMarkRead')?.addEventListener('click', markCurrentContactRead);
+  document.getElementById('contactCloseDetail')?.addEventListener('click', hideContactDetail);
+  loadContactMessages();
+}
+
+// Extend existing DOMContentLoaded hook for notifications to also init contacts
+(function(){
+  document.addEventListener('DOMContentLoaded', ()=>{ if (document.getElementById('pane-contact')) initContactMessages(); });
+})();
+
+function truncate(str='', max=80){ return str.length>max ? str.slice(0,max-1)+'…' : str; }

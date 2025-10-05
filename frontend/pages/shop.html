@@ -26,46 +26,26 @@
     if (!localStorage.getItem('token')) { window.location.href='/?#signin'; }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
-  <script defer>
-    // Lightweight sidebar toggle for this page
-    window.addEventListener('DOMContentLoaded', function(){
-      const burger = document.getElementById('dashBurger');
-      const sidebar = document.getElementById('dashSidebar');
-      const overlay = document.getElementById('dashOverlay');
-      if (!burger || !sidebar || !overlay) return;
-      const isMobile = ()=> window.matchMedia('(max-width: 767.98px)').matches;
-      const openM = ()=>{ document.body.classList.add('sidebar-open'); overlay.classList.remove('d-none'); };
-      const closeM = ()=>{ document.body.classList.remove('sidebar-open'); overlay.classList.add('d-none'); };
-      burger.addEventListener('click', ()=>{ if (isMobile()) { if (document.body.classList.contains('sidebar-open')) closeM(); else openM(); } else { sidebar.classList.toggle('d-none'); } });
-      overlay.addEventListener('click', closeM);
-      window.addEventListener('resize', ()=>{ if (!isMobile()) closeM(); });
-      document.getElementById('shopSignOut')?.addEventListener('click', (e)=>{ e.preventDefault(); try{ localStorage.removeItem('token'); localStorage.removeItem('cart'); }catch(_){}; try{ history.replaceState(null, document.title, location.pathname+location.search);}catch(_){}; location.replace('/'); });
-    });
-  </script>
 </head>
 <body>
   <div class="container-fluid">
     <div class="row">
-      <aside class="col-12 col-md-3 col-lg-2 sidebar p-3" id="dashSidebar">
-        <a class="navbar-brand fw-bold d-block mb-3 d-flex align-items-center gap-2" href="/">
-          <img src="/keohamlogo.jpg" alt="KEOHAMS" class="brand-logo" />
-          <span class="d-none d-sm-inline">KEOHAMS</span>
-        </a>
-        <nav class="nav nav-pills flex-column gap-1" id="dashNav">
-          <a class="nav-link" href="/dashboard">Overview</a>
-          <a class="nav-link active" href="/shop">Shop</a>
-          <a class="nav-link" href="/blog" target="_blank">Blog</a>
-          <a class="nav-link" href="/dashboard">Settings</a>
-          <a class="nav-link text-danger" id="shopSignOut" href="#">Sign out</a>
-        </nav>
-      </aside>
+      <aside class="col-12 col-md-3 col-lg-2 sidebar p-3" id="dashSidebar" data-sidebar></aside>
       <main class="col-12 col-md-9 col-lg-10 p-4">
         <div class="d-flex justify-content-between align-items-center mb-3 gap-3">
           <button class="btn btn-outline-secondary" id="dashBurger" aria-label="Toggle menu">☰</button>
-          <a class="text-decoration-none position-relative" href="/cart" title="Cart">
-            <span class="fs-5">🛒</span>
-            <span id="shopCartCount" class="badge rounded-pill text-bg-light position-absolute translate-middle" style="top:0; left:100%">0</span>
-          </a>
+          <div class="d-flex align-items-center gap-3 ms-auto">
+            <button class="btn btn-sm btn-outline-secondary" data-theme-toggle type="button">Dark Mode</button>
+            <a class="text-decoration-none position-relative" href="/notifications" title="Notifications">
+              <span class="fs-5">🔔</span>
+              <span data-unread-badge class="badge rounded-pill bg-danger position-absolute translate-middle d-none" style="top:0; left:100%">0</span>
+            </a>
+            <img data-global-avatar src="https://via.placeholder.com/48x48.png?text=U" alt="Avatar" class="rounded-circle border" style="width:48px;height:48px;object-fit:cover;" />
+            <a class="text-decoration-none position-relative" href="/cart" title="Cart">
+              <span class="fs-5">🛒</span>
+              <span id="shopCartCount" class="badge rounded-pill text-bg-light position-absolute translate-middle" style="top:0; left:100%">0</span>
+            </a>
+          </div>
         </div>
         <div class="row g-3">
           <aside class="col-12 col-md-3">
@@ -94,6 +74,8 @@
     </div>
   </div>
   <div id="dashOverlay" class="d-none position-fixed top-0 start-0 w-100 h-100"></div>
+  <script type="module" src="/src/js/global.js"></script>
+  <script type="module" src="/src/js/sidebar.js"></script>
 
   <!-- Floating Chat Widget -->
   <button id="chatFab" class="btn btn-primary position-fixed" style="right:16px; bottom:16px; border-radius:28px; padding:10px 14px; display:none; z-index:1050;">

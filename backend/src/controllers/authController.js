@@ -60,7 +60,7 @@ exports.register = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-  const { email, password, captchaToken, captchaAnswer } = req.body;
+  const { email, password, captchaToken, captchaAnswer, twofa_token, recovery_code } = req.body;
   if (!email || !password) return res.status(400).json({ message: 'Missing fields' });
   try { verifyCaptcha(captchaToken, captchaAnswer); } catch (e) { return res.status(400).json({ message: e.message }); }
   const user = await Users.findByEmail(email);
@@ -68,11 +68,74 @@ exports.login = async (req, res) => {
   const ok = await bcrypt.compare(password, user.password_hash);
   if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
 
-  // Optionally enforce email verification before login
-  // if (!user.email_verified) return res.status(403).json({ message: 'Please verify your email' });
+  // If user has 2FA enabled, require token or recovery code
+  if (user.twofa_secret) {
+    // If provided in same step, allow direct verification
+    if (twofa_token || recovery_code) {
+      try {
+        const verified = await verifyTwoFactor(user, twofa_token, recovery_code);
+        if (!verified.ok) return res.status(401).json({ message: verified.message || 'Invalid 2FA' });
+      } catch (e) {
+        return res.status(500).json({ message: '2FA check failed' });
+      }
+    } else {
+      // Return early telling client to prompt for second factor
+      return res.status(200).json({ twofa_required: true, user_hint: { id: user.id, email: user.email, name: user.name } });
+    }
+  }
 
   const token = sign({ sub: user.id, role: user.role });
-  return res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+  return res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar_url: user.avatar_url } });
+};
+
+// INTERNAL helper for verifying 2FA TOTP or recovery code usage
+const speakeasy = require('speakeasy');
+async function verifyTwoFactor(user, twofa_token, recovery_code) {
+  if (!user.twofa_secret) return { ok: true };
+  if (twofa_token) {
+    const valid = speakeasy.totp.verify({ secret: user.twofa_secret, encoding: 'base32', token: twofa_token, window: 1 });
+    if (!valid) return { ok: false, message: 'Invalid 2FA token' };
+    return { ok: true };
+  }
+  if (recovery_code) {
+    // Lookup hashed recovery codes
+    try {
+      const row = await db('twofa_recovery_codes').where({ user_id: user.id, used: 0 }).select('*');
+      if (!row || !row.length) return { ok: false, message: 'No recovery codes available' };
+      const bcrypt = require('bcryptjs');
+      for (const codeRow of row) {
+        const match = await bcrypt.compare(recovery_code, codeRow.code_hash);
+        if (match) {
+          await db('twofa_recovery_codes').where({ id: codeRow.id }).update({ used: 1, used_at: db.fn.now() });
+          return { ok: true };
+        }
+      }
+      return { ok: false, message: 'Invalid recovery code' };
+    } catch (e) {
+      return { ok: false, message: 'Recovery code check failed' };
+    }
+  }
+  return { ok: false, message: '2FA token required' };
+}
+
+// Separate endpoint if client prefers a two-step flow (login step 1 returns twofa_required)
+exports.verifySecondFactor = async (req, res) => {
+  const { email, password, twofa_token, recovery_code, captchaToken, captchaAnswer } = req.body;
+  if (!email || !password) return res.status(400).json({ message: 'Missing fields' });
+  try { verifyCaptcha(captchaToken, captchaAnswer); } catch (e) { return res.status(400).json({ message: e.message }); }
+  const user = await Users.findByEmail(email);
+  if (!user) return res.status(401).json({ message: 'Invalid credentials' });
+  const ok = await bcrypt.compare(password, user.password_hash);
+  if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
+  if (!user.twofa_secret) {
+    // 2FA not enabled, just issue token
+  const token = sign({ sub: user.id, role: user.role });
+  return res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar_url: user.avatar_url } });
+  }
+  const verified = await verifyTwoFactor(user, twofa_token, recovery_code);
+  if (!verified.ok) return res.status(401).json({ message: verified.message || 'Invalid 2FA' });
+  const token = sign({ sub: user.id, role: user.role });
+  return res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar_url: user.avatar_url } });
 };
 
 exports.verifyEmail = async (req, res) => {
@@ -114,7 +177,8 @@ exports.me = async (req, res) => {
     name: user.name,
     email: user.email,
     role: user.role,
-    email_verified: !!user.email_verified
+    email_verified: !!user.email_verified,
+    avatar_url: user.avatar_url
   });
 };
 

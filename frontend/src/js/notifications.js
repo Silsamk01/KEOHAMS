@@ -27,6 +27,7 @@ async function load() {
         <div class="d-flex align-items-center gap-2">
           ${n.url ? `<a href="${n.url}" class="btn btn-sm btn-primary" target="_blank">Open</a>` : ''}
           <button class="btn btn-sm btn-outline-secondary" data-read data-id="${n.id}">Mark read</button>
+          <button class="btn btn-sm btn-outline-danger" title="Delete" data-del data-id="${n.id}">✕</button>
         </div>
       </div>
       <div class="mt-2">${escapeHtml(n.body)}</div>
@@ -43,6 +44,14 @@ function wireRowActions(){
       const id = btn.getAttribute('data-id');
       try { await fetchJSON(`${API_BASE}/notifications/${id}/read`, { method:'POST', body: JSON.stringify({}) }); btn.closest('.p-3')?.classList.add('opacity-75'); }
       catch(e){ alert(e.message || 'Failed'); }
+    });
+  });
+  document.querySelectorAll('[data-del]').forEach(btn => {
+    btn.addEventListener('click', async ()=>{
+      const id = btn.getAttribute('data-id');
+      if (!confirm('Delete this notification from your list?')) return;
+      try { await fetchJSON(`${API_BASE}/notifications/${id}`, { method:'DELETE' }); btn.closest('.p-3')?.remove(); }
+      catch(e){ alert(e.message || 'Delete failed'); }
     });
   });
 }

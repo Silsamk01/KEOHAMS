@@ -6,6 +6,8 @@ let socket;
 let joinedThreadId = null;
 let unreadPollTimer = null;
 let isChatOpen = false;
+let typingTimeout = null;
+let lastEmittedTyping = 0;
 
 function connectSocket() {
   if (socket && socket.connected) return socket;
@@ -24,6 +26,8 @@ function connectSocket() {
         try { const c = await fetchUnread(); setFabCount(c); if (c>0) setFabVisible(true); } catch(_){ }
       }
     }
+    // Broadcast globally for other pages (e.g. full chat page) regardless of active modal
+    try { window.dispatchEvent(new CustomEvent('chat:message', { detail: payload })); } catch(_){ }
   });
   // When admin sends a new message to the user (for any thread), bump unread badge if it's not the active thread
   socket.on('user:message:new', async (payload)=>{
@@ -39,8 +43,37 @@ function connectSocket() {
       // soft sync after short delay to reflect accurate backend count
       setTimeout(async ()=>{ const c = await fetchUnread(); setFabCount(c); if (c>0) setFabVisible(true); }, 500);
     }
+    try { window.dispatchEvent(new CustomEvent('chat:user:message', { detail: payload })); } catch(_){ }
+  });
+  // Typing indicators from others
+  socket.on('typing:start', ({ thread_id, user_id }) => {
+    if (thread_id !== joinedThreadId) return;
+    const el = document.getElementById('chatTyping');
+    if (el) el.style.display = 'block';
+    try { window.dispatchEvent(new CustomEvent('chat:typing:start', { detail: { thread_id, user_id } })); } catch(_){ }
+  });
+  socket.on('typing:stop', ({ thread_id, user_id }) => {
+    if (thread_id !== joinedThreadId) return;
+    const el = document.getElementById('chatTyping');
+    if (el) el.style.display = 'none';
+    try { window.dispatchEvent(new CustomEvent('chat:typing:stop', { detail: { thread_id, user_id } })); } catch(_){ }
+  });
+  // Unread count push
+  socket.on('unread:update', ({ count }) => {
+    setFabCount(count || 0);
+    if ((count||0) > 0) setFabVisible(true);
+    try { window.dispatchEvent(new CustomEvent('chat:unread', { detail: { count } })); } catch(_){ }
+  });
+  socket.on('thread:update', (payload)=>{
+    try { if (window.__chatThreadUpdate) window.__chatThreadUpdate(payload); } catch(_){}
+    try { window.dispatchEvent(new CustomEvent('chat:thread:update', { detail: payload })); } catch(_){ }
   });
   return socket;
+}
+
+// Utility to ensure a connected socket and expose it to other modules
+export function ensureSocket(){
+  return connectSocket();
 }
 
 function escapeHtml(s){ return String(s||'').replace(/[&<>"]+/g, ch=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[ch])); }
@@ -135,15 +168,21 @@ function wireChatInput(thread_id){
   const input = document.getElementById('chatInput');
   const btn = document.getElementById('chatSendBtn');
   if (!input || !btn) return;
+  const typingEl = document.getElementById('chatTyping'); if (typingEl) typingEl.style.display='none';
   const send = async () => {
     const text = input.value.trim();
     if (!text) return;
     input.value = '';
     // Only send; rely on socket 'message:new' to render to avoid duplicate
     try { await sendMessage(thread_id, text); } catch (e) { console.warn(e); }
+    // Stop typing indicator after send
+    emitTypingStop(thread_id);
   };
   btn.onclick = send;
   input.onkeydown = (e)=>{ if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } };
+  input.addEventListener('input', () => {
+    scheduleTypingEmit(thread_id);
+  });
 }
 
 export async function openProductChat(product_id, initialMessage){
@@ -176,28 +215,27 @@ async function markSeen(thread_id){
 function setFabVisible(v){ const b = document.getElementById('chatFab'); if (b) b.style.display = v ? 'inline-flex':'none'; }
 function setFabCount(n){ const el = document.getElementById('chatFabBadge'); if (el) el.textContent = String(n); }
 
+function emitTypingStart(thread_id){
+  const s = connectSocket(); if (!s) return;
+  const now = Date.now();
+  if (now - lastEmittedTyping > 1000) { // throttle
+    s.emit('typing:start', { thread_id });
+    lastEmittedTyping = now;
+  }
+}
+function emitTypingStop(thread_id){
+  const s = connectSocket(); if (!s) return;
+  s.emit('typing:stop', { thread_id });
+}
+function scheduleTypingEmit(thread_id){
+  emitTypingStart(thread_id);
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(()=> emitTypingStop(thread_id), 2500);
+}
+
 export function initChatWidget(){
   const fab = document.getElementById('chatFab'); if (!fab) return;
-  fab.addEventListener('click', async ()=>{
-    // Open last thread if exists, otherwise list mine and open the most recent
-    const t = token(); if (!t) { window.location.href='/?#signin'; return; }
-    try {
-      const res = await fetch(`${API_BASE}/chats/threads/mine`, { headers: { Authorization: `Bearer ${t}` } });
-      const j = await res.json();
-      let thread = j.data?.[0];
-      if (!thread) {
-        // create a general thread on first open
-        thread = await startGeneralThread();
-      }
-      const s = connectSocket(); if (s) s.emit('thread:join', { thread_id: thread.id }); joinedThreadId = thread.id;
-      const msgs = await loadMessages(thread.id);
-      renderMessages(msgs);
-      wireChatInput(thread.id);
-      wireChatHeader(thread.id);
-      await fetch(`${API_BASE}/chats/threads/${thread.id}/mark-seen`, { method:'POST', headers: { Authorization: `Bearer ${t}` } });
-      openChatModal();
-    } catch(_){}
-  });
+  fab.addEventListener('click', openDefaultChat);
 
   // Start polling unread count and show button on first non-zero or if any thread exists
   (async ()=>{
@@ -211,6 +249,27 @@ export function initChatWidget(){
     clearInterval(unreadPollTimer); unreadPollTimer = setInterval(tick, 15000);
     tick();
   })();
+}
+
+// Public helper to open (or create) the user's default/general chat thread.
+export async function openDefaultChat(){
+  const t = token(); if (!t) { window.location.href='/?#signin'; return; }
+  try {
+    const res = await fetch(`${API_BASE}/chats/threads/mine`, { headers: { Authorization: `Bearer ${t}` } });
+    const j = await res.json();
+    let thread = j.data?.[0];
+    if (!thread) {
+      // create a general thread on first open
+      thread = await startGeneralThread();
+    }
+    const s = connectSocket(); if (s) s.emit('thread:join', { thread_id: thread.id }); joinedThreadId = thread.id;
+    const msgs = await loadMessages(thread.id);
+    renderMessages(msgs);
+    wireChatInput(thread.id);
+    wireChatHeader(thread.id);
+    await fetch(`${API_BASE}/chats/threads/${thread.id}/mark-seen`, { method:'POST', headers: { Authorization: `Bearer ${t}` } });
+    openChatModal();
+  } catch(e){ console.warn('Failed to open default chat', e); }
 }
 
 export async function openExistingThread(thread_id, { inModal=true } = {}){

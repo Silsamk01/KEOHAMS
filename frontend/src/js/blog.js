@@ -8,6 +8,8 @@ async function fetchJSON(url, opts={}){
   return res.json();
 }
 
+import { initChatWidget } from './chat.js';
+
 async function load(){
   try {
     const posts = await fetchJSON(`${API_BASE}/blog`);
@@ -30,3 +32,4 @@ async function load(){
 }
 
 load();
+try { initChatWidget(); } catch(_){}

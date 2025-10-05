@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>User Settings · KEOHAMS</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="/src/css/styles.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      <aside class="col-12 col-md-3 col-lg-2 sidebar p-3" id="dashSidebar" data-sidebar></aside>
+      <main class="col-12 col-md-9 col-lg-10 p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4 gap-3">
+          <button class="btn btn-outline-secondary" id="dashBurger" aria-label="Toggle menu">☰</button>
+          <h1 class="h4 m-0 text-gradient">Account Settings</h1>
+          <div class="d-flex align-items-center gap-3 ms-auto">
+            <button class="btn btn-sm btn-outline-secondary" data-theme-toggle type="button">Dark Mode</button>
+            <a class="text-decoration-none position-relative" href="/notifications" title="Notifications">
+              <span class="fs-5">🔔</span>
+              <span data-unread-badge class="badge rounded-pill bg-danger position-absolute translate-middle d-none" style="top:0; left:100%">0</span>
+            </a>
+            <img data-global-avatar src="https://via.placeholder.com/48x48.png?text=U" class="rounded-circle border" style="width:48px;height:48px;object-fit:cover;" alt="Avatar" />
+          </div>
+        </div>
+
+    <div class="row g-4">
+      <!-- Profile -->
+      <div class="col-lg-6">
+        <div class="card h-100">
+          <div class="card-header">Profile</div>
+          <div class="card-body">
+            <div class="vstack gap-3" id="profileDisplay">
+              <div class="d-flex align-items-center gap-3 mb-2">
+                <img id="pfAvatar" src="https://via.placeholder.com/120x120.png?text=Avatar" class="rounded-circle border" style="width:120px;height:120px;object-fit:cover;" alt="Avatar" />
+                <div class="flex-grow-1">
+                  <label class="form-label small mb-1">Change Avatar</label>
+                  <input type="file" id="pfAvatarInput" accept="image/*" class="form-control form-control-sm" />
+                  <div id="pfAvatarStatus" class="small text-muted"></div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-5 fw-semibold">Name</div>
+                <div class="col-7" id="pfNameText">—</div>
+              </div>
+              <div class="row">
+                <div class="col-5 fw-semibold">Phone</div>
+                <div class="col-7 d-flex align-items-center gap-2" id="pfPhoneWrap">
+                  <input type="text" id="pfPhoneInput" class="form-control form-control-sm" style="max-width:180px;" placeholder="+1 ..." />
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-5 fw-semibold">Age</div>
+                <div class="col-7" id="pfAgeText">—</div>
+              </div>
+              <div class="d-flex gap-2 align-items-center">
+                <button class="btn btn-primary btn-sm" id="pfSaveBtn" type="button">Save Changes</button>
+                <div id="pfSaveStatus" class="small text-muted"></div>
+              </div>
+              <div class="alert alert-info small mb-0">Name locked. You can update your phone and avatar.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Security -->
+      <div class="col-lg-6">
+        <div class="card mb-4">
+          <div class="card-header">Change Password</div>
+          <div class="card-body">
+            <form id="pwdForm" class="vstack gap-3">
+              <input type="password" id="pwdCurrent" class="form-control" placeholder="Current password" required>
+              <input type="password" id="pwdNew" class="form-control" placeholder="New password (min 6 chars)" minlength="6" required>
+              <div class="progress" style="height:6px;">
+                <div id="pwdStrengthBar" class="progress-bar bg-danger" style="width:0%"></div>
+              </div>
+              <div id="pwdStrengthText" class="small text-muted"></div>
+              <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary" type="submit">Update Password</button>
+                <div id="pwdStatus" class="small text-muted align-self-center"></div>
+              </div>
+            </form>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Two-Factor Authentication (TOTP)</span>
+            <span class="badge text-bg-secondary" id="twofaBadge">Checking...</span>
+          </div>
+          <div class="card-body">
+            <div id="twofaStatus" class="mb-2 small"></div>
+            <div id="twofaSetup" class="d-none">
+              <img id="twofaQR" alt="QR" class="mb-2" style="max-width:180px;display:block;" />
+              <code class="d-block mb-2" id="twofaKey"></code>
+              <div class="input-group mb-2" style="max-width:260px;">
+                <span class="input-group-text">Code</span>
+                <input type="text" id="twofaToken" class="form-control" placeholder="123456" maxlength="6">
+              </div>
+              <div class="d-flex gap-2">
+                <button class="btn btn-success btn-sm" id="twofaEnableBtn" type="button">Enable 2FA</button>
+                <button class="btn btn-outline-secondary btn-sm" id="twofaCancelBtn" type="button">Cancel</button>
+              </div>
+            </div>
+            <div id="twofaActions" class="d-flex gap-2">
+              <button class="btn btn-outline-success btn-sm" id="twofaBeginSetup" type="button">Set up 2FA</button>
+              <button class="btn btn-outline-danger btn-sm d-none" id="twofaDisableBtn" type="button">Disable 2FA</button>
+              <button class="btn btn-outline-secondary btn-sm d-none" id="twofaShowRecoveryBtn" type="button">Regenerate Recovery Codes</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Danger / Account -->
+      <div class="col-12">
+        <div class="card border-danger-subtle">
+          <div class="card-header text-danger">Account</div>
+          <div class="card-body">
+            <button class="btn btn-outline-danger" id="signOutBtn2" type="button">Sign out of this device</button>
+          </div>
+        </div>
+      </div>
+    </div>
+      </main>
+    </div>
+  </div>
+  <div id="dashOverlay" class="d-none position-fixed top-0 start-0 w-100 h-100"></div>
+  <script type="module" src="/src/js/global.js"></script>
+  <script type="module" src="/src/js/sidebar.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Recovery Codes Modal -->
+  <div class="modal fade" id="recoveryCodesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">2FA Recovery Codes</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="small text-muted">Store these codes somewhere safe (password manager). Each code can be used once if you lose access to your authenticator app.</p>
+          <pre id="recoveryCodesList" class="bg-light p-2 rounded small mb-0" style="white-space: pre-wrap; max-height:220px; overflow:auto;"></pre>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="/src/js/avatar.js"></script>
+  <script type="module" src="/src/js/settings.js"></script>
+</body>
+</html>

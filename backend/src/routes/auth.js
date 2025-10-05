@@ -6,6 +6,7 @@ const { createCaptcha } = require('../utils/captcha');
 
 router.post('/register', asyncHandler(authController.register));
 router.post('/login', asyncHandler(authController.login));
+router.post('/verify-2fa', asyncHandler(authController.verifySecondFactor));
 router.get('/verify-email', asyncHandler(authController.verifyEmail));
 router.get('/me', requireAuth, asyncHandler(authController.me));
 router.post('/forgot-password', asyncHandler(authController.forgotPassword));

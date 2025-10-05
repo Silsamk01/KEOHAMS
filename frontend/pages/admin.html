@@ -22,45 +22,29 @@
   </nav>
 
   <main class="container py-4">
-    <h1 class="h4 mb-3 text-gradient">Admin Dashboard</h1>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h1 class="h4 mb-0 text-gradient">Admin Dashboard</h1>
+      <button class="btn btn-outline-secondary btn-sm admin-sidebar-toggle d-lg-none" id="sidebarToggle" type="button">Menu</button>
+    </div>
 
-    <ul class="nav nav-pills mb-3" id="adminTabs" role="tablist">
-      <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="tab-dashboard" data-bs-toggle="pill" data-bs-target="#pane-dashboard" type="button" role="tab">Dashboard</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-users" data-bs-toggle="pill" data-bs-target="#pane-users" type="button" role="tab">Users</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-kyc" data-bs-toggle="pill" data-bs-target="#pane-kyc" type="button" role="tab">KYC</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-categories" data-bs-toggle="pill" data-bs-target="#pane-categories" type="button" role="tab">Categories</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-products" data-bs-toggle="pill" data-bs-target="#pane-products" type="button" role="tab">Products</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-pending" data-bs-toggle="pill" data-bs-target="#pane-pending" type="button" role="tab">Pending Registrations</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-profile" data-bs-toggle="pill" data-bs-target="#pane-profile" type="button" role="tab">Profile</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-blog" data-bs-toggle="pill" data-bs-target="#pane-blog" type="button" role="tab">Blog</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-notifs" data-bs-toggle="pill" data-bs-target="#pane-notifs" type="button" role="tab">Notifications</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-chats" data-bs-toggle="pill" data-bs-target="#pane-chats" type="button" role="tab">Chats</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-notifs" data-bs-toggle="pill" data-bs-target="#pane-notifs" type="button" role="tab">Notifications</button>
-      </li>
-    </ul>
-
-    <div class="tab-content" id="adminTabContent">
+    <div class="admin-layout">
+      <aside class="admin-sidebar" id="adminSidebar">
+        <nav class="nav gap-1" id="adminTabs" role="tablist">
+          <button class="nav-link active" id="tab-dashboard" data-bs-toggle="pill" data-bs-target="#pane-dashboard" type="button" role="tab">Dashboard</button>
+          <button class="nav-link" id="tab-users" data-bs-toggle="pill" data-bs-target="#pane-users" type="button" role="tab">Users</button>
+          <button class="nav-link" id="tab-kyc" data-bs-toggle="pill" data-bs-target="#pane-kyc" type="button" role="tab">KYC</button>
+          <button class="nav-link" id="tab-categories" data-bs-toggle="pill" data-bs-target="#pane-categories" type="button" role="tab">Categories</button>
+          <button class="nav-link" id="tab-products" data-bs-toggle="pill" data-bs-target="#pane-products" type="button" role="tab">Products</button>
+          <button class="nav-link" id="tab-pending" data-bs-toggle="pill" data-bs-target="#pane-pending" type="button" role="tab">Pending Registrations</button>
+          <button class="nav-link" id="tab-profile" data-bs-toggle="pill" data-bs-target="#pane-profile" type="button" role="tab">Profile</button>
+          <button class="nav-link" id="tab-blog" data-bs-toggle="pill" data-bs-target="#pane-blog" type="button" role="tab">Blog</button>
+          <button class="nav-link" id="tab-notifs" data-bs-toggle="pill" data-bs-target="#pane-notifs" type="button" role="tab">Notifications</button>
+          <button class="nav-link" id="tab-chats" data-bs-toggle="pill" data-bs-target="#pane-chats" type="button" role="tab">Chats</button>
+          <button class="nav-link" id="tab-contact" data-bs-toggle="pill" data-bs-target="#pane-contact" type="button" role="tab">Contact Messages</button>
+        </nav>
+      </aside>
+      <div class="admin-content">
+        <div class="tab-content" id="adminTabContent">
       <div class="tab-pane fade show active" id="pane-dashboard" role="tabpanel">
         <div class="row g-3">
           <div class="col-md-3">
@@ -340,6 +324,23 @@
                 <tbody id="notifsTbody"></tbody>
               </table>
             </div>
+            <div class="card mt-4">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <span>User Read Activity (live)</span>
+                <div class="d-flex gap-2">
+                  <span class="badge text-bg-info" id="notifReadsCount">0 events</span>
+                  <button class="btn btn-sm btn-outline-secondary" id="notifReadsClear">Clear</button>
+                </div>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                  <thead>
+                    <tr><th>Time</th><th>User ID</th><th>Type</th><th>Notification IDs</th></tr>
+                  </thead>
+                  <tbody id="notifReadsTbody"></tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -373,59 +374,62 @@
         </div>
       </div>
 
-      <div class="tab-pane fade" id="pane-notifs" role="tabpanel">
-        <div class="row g-4">
-          <div class="col-lg-4">
+      <div class="tab-pane fade" id="pane-contact" role="tabpanel">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+          <div class="d-flex gap-2 align-items-center">
+            <label class="form-label m-0 small">Filter</label>
+            <select id="contactFilter" class="form-select form-select-sm" style="width:auto;">
+              <option value="all">All</option>
+              <option value="unread">Unread</option>
+            </select>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm" id="contactRefresh">Refresh</button>
+          </div>
+        </div>
+        <div class="row g-3">
+          <div class="col-lg-6">
             <div class="card h-100">
-              <div class="card-header">Create Notification</div>
-              <div class="card-body">
-                <form id="notifCreateForm" class="vstack gap-2">
-                  <div>
-                    <label class="form-label">Title</label>
-                    <input type="text" class="form-control" id="nTitle" required>
-                  </div>
-                  <div>
-                    <label class="form-label">Body</label>
-                    <textarea class="form-control" id="nBody" rows="4" required></textarea>
-                  </div>
-                  <div>
-                    <label class="form-label">Audience</label>
-                    <select class="form-select" id="nAudience">
-                      <option value="ALL">All users</option>
-                      <option value="USER">Specific user</option>
-                    </select>
-                  </div>
-                  <div id="nUserWrap" class="d-none">
-                    <label class="form-label">User ID</label>
-                    <input type="number" class="form-control" id="nUserId" min="1">
-                  </div>
-                  <div>
-                    <label class="form-label">URL (optional)</label>
-                    <input type="url" class="form-control" id="nUrl">
-                  </div>
-                  <button class="btn btn-primary" type="submit">Send</button>
-                </form>
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Messages</span>
+                <div class="small text-muted" id="contactMeta">–</div>
+              </div>
+              <div class="table-responsive" style="max-height:55vh; overflow:auto;">
+                <table class="table table-sm mb-0 align-middle">
+                  <thead>
+                    <tr><th>ID</th><th>Name</th><th>Email</th><th>Subject</th><th>When</th><th></th></tr>
+                  </thead>
+                  <tbody id="contactTbody"></tbody>
+                </table>
+              </div>
+              <div class="card-footer d-flex justify-content-between align-items-center">
+                <div class="small text-muted" id="contactTotal">–</div>
+                <div class="btn-group">
+                  <button class="btn btn-outline-secondary btn-sm" id="contactPrev">Prev</button>
+                  <button class="btn btn-outline-secondary btn-sm" id="contactNext">Next</button>
+                </div>
               </div>
             </div>
           </div>
-          <div class="col-lg-8">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <div class="small text-muted">Recent notifications</div>
-              <button class="btn btn-outline-secondary btn-sm" id="refreshNotifs">Refresh</button>
-            </div>
-            <div class="table-responsive">
-              <table class="table table-sm align-middle">
-                <thead>
-                  <tr>
-                    <th>ID</th><th>Title</th><th>Audience</th><th>User</th><th>Created</th><th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="notifsTbody"></tbody>
-              </table>
+          <div class="col-lg-6">
+            <div class="card h-100" id="contactDetailCard" style="display:none;">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="fw-semibold" id="contactDetailSubject">Subject</div>
+                  <div class="small text-muted" id="contactDetailMeta">Meta</div>
+                </div>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-sm btn-outline-primary" id="contactMarkRead" disabled>Mark Read</button>
+                  <button class="btn btn-sm btn-outline-secondary" id="contactCloseDetail">Close</button>
+                </div>
+              </div>
+              <div class="card-body" style="white-space:pre-wrap;" id="contactDetailBody"></div>
             </div>
           </div>
         </div>
       </div>
+
+      <!-- Removed duplicate notifications pane (already defined earlier) -->
 
       <div class="tab-pane fade" id="pane-pending" role="tabpanel">
         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -572,6 +576,8 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
         </div>
       </div>
     </div>

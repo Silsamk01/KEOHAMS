@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>About · KEOHAMS</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="/src/css/styles.css" rel="stylesheet" />
+  <script type="module" src="/src/js/global.js"></script>
+  <script type="module" src="/src/js/sidebar.js"></script>
+  <style>
+    .presence-text { color: var(--presence-text,#374151); font-weight:500; }
+    [data-theme='dark'] .presence-text { --presence-text:#e5e7eb; }
+    .presence-badge { background: var(--presence-badge-bg,#fff); color: var(--presence-badge-text,#111827); border:1px solid var(--presence-badge-border,#d1d5db); }
+    [data-theme='dark'] .presence-badge { --presence-badge-bg:#2d3338; --presence-badge-text:#f3f4f6; --presence-badge-border:#4b5563; }
+    .hero-mini { background: linear-gradient(90deg,#2f5337,#3d6b46); color:#fff; }
+  </style>
+</head>
+<body>
+  <header class="navbar navbar-expand-lg navbar-light bg-white border-bottom sticky-top">
+    <div class="container">
+      <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="/">
+        <img src="/keohamlogo.jpg" alt="KEOHAMS" class="brand-logo" />
+        <span class="d-none d-sm-inline">KEOHAMS</span>
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto align-items-center">
+          <li class="nav-item me-2">
+            <button class="btn btn-outline-secondary btn-sm" type="button" data-theme-toggle>Dark Mode</button>
+          </li>
+          <li class="nav-item"><a class="nav-link active" aria-current="page" href="/about">About</a></li>
+          <li class="nav-item"><a class="nav-link" href="/contact">Contact</a></li>
+          <li class="nav-item"><a class="nav-link" href="/blog">Blog</a></li>
+          <li class="nav-item"><a class="nav-link" href="/shop" data-requires-auth>Shop</a></li>
+        </ul>
+      </div>
+    </div>
+  </header>
+  <div class="global-presence text-center border-bottom">
+    <div class="container py-2 d-flex flex-wrap justify-content-center align-items-center gap-2 gap-md-3 small">
+      <span class="presence-text">Registered in</span>
+      <span class="badge presence-badge fw-semibold"><span class="me-1">🇳🇬</span>Nigeria</span>
+      <span class="presence-text">and</span>
+      <span class="badge presence-badge fw-semibold"><span class="me-1">🇨🇳</span>China</span>
+    </div>
+  </div>
+  <section class="hero-mini py-5">
+    <div class="container">
+      <h1 class="h3 fw-bold mb-3">About KEOHAMS Deluxe Enterprises</h1>
+      <p class="lead mb-0">Connecting Africa & Asia with reliable wholesale supply, transparent pricing, and real-time communication.</p>
+    </div>
+  </section>
+  <main class="container py-5">
+    <div class="row g-5">
+      <div class="col-lg-7">
+        <h2 class="h5 text-uppercase text-muted">Our Mission</h2>
+        <p>We streamline bulk procurement by giving businesses a unified platform for browsing, negotiating, chatting, and tracking orders across key trade corridors.</p>
+        <h2 class="h5 text-uppercase text-muted mt-4">What Sets Us Apart</h2>
+        <ul class="list-unstyled vstack gap-2">
+          <li>✔ Real-time chat & notifications</li>
+          <li>✔ KYC-backed trust & verification</li>
+          <li>✔ Currency conversion assistance</li>
+          <li>✔ Scalable infrastructure & caching</li>
+          <li>✔ Secure 2FA & recovery codes</li>
+        </ul>
+        <h2 class="h5 text-uppercase text-muted mt-4">Presence</h2>
+        <p>Operating across Nigeria and China to reduce sourcing friction and accelerate delivery cycles.</p>
+      </div>
+      <div class="col-lg-5">
+        <div class="p-4 bg-light rounded-4 h-100">
+          <h3 class="h6 text-uppercase text-muted">At a Glance</h3>
+          <div class="row small gy-2 mt-2">
+            <div class="col-6">Users Protected (2FA)</div><div class="col-6 text-end">Yes</div>
+            <div class="col-6">Chat Enabled</div><div class="col-6 text-end">✔</div>
+            <div class="col-6">Realtime Notifications</div><div class="col-6 text-end">✔</div>
+            <div class="col-6">Optimized Caching</div><div class="col-6 text-end">✔</div>
+            <div class="col-6">Multi-Region</div><div class="col-6 text-end">🇳🇬 / 🇨🇳</div>
+          </div>
+          <div class="mt-3">
+            <a href="/contact" class="btn btn-success w-100">Contact Us</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
