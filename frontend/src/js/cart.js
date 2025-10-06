@@ -30,6 +30,35 @@ function render(){
 
 render();
 
-document.getElementById('checkoutBtn').addEventListener('click', () => {
-  alert('Checkout coming soon.');
-});
+async function apiRequestQuotation(){
+  const token = localStorage.getItem('token');
+  if(!token){ window.location.href='/?#signin&redirect=/cart'; return; }
+  const items = cart_get();
+  if(!items.length){ alert('Cart empty'); return; }
+  // Map cart items to API shape (product_id, quantity)
+  const payloadItems = items.map(i=> ({ product_id: i.id || i.product_id, quantity: i.qty }));
+  // Remove any invalid
+  if(payloadItems.some(i=> !i.product_id)){ alert('Missing product id in cart item'); return; }
+  const btn = document.getElementById('checkoutBtn');
+  btn.disabled = true; const orig = btn.textContent; btn.textContent='Requesting...';
+  try {
+    const res = await fetch('http://localhost:4000/api/quotations', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', Authorization: 'Bearer '+token },
+      body: JSON.stringify({ items: payloadItems })
+    });
+    if(!res.ok) throw new Error(await res.text());
+    const q = await res.json();
+    // Clear cart after successful quotation request
+    cart_set([]);
+    if(window.showToast) showToast('Quotation requested: '+ q.reference, { type:'success' });
+    // Redirect to quotations pane in dashboard (we will implement the page soon)
+    window.location.href='/dashboard?pane=quotations';
+  } catch(e){
+    if(window.showToast) showToast(e.message || 'Failed', { type:'error' }); else alert(e.message||'Failed');
+  } finally {
+    btn.disabled=false; btn.textContent=orig;
+  }
+}
+
+document.getElementById('checkoutBtn').addEventListener('click', apiRequestQuotation);

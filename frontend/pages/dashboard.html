@@ -31,12 +31,31 @@
   <script type="module" src="/src/js/global.js"></script>
   <script type="module" src="/src/js/sidebar.js"></script>
   <script type="module" src="/src/js/dashboard.js"></script>
+  <style>
+    #kycGateOverlay { position:fixed; inset:0; background:rgba(255,255,255,.94); z-index:2000; display:none; align-items:center; justify-content:center; flex-direction:column; padding:2rem; text-align:center; }
+    #kycGateOverlay .gate-card { max-width:640px; width:100%; }
+  </style>
   <script>
     if (!localStorage.getItem('token')) { window.location.href='/?#signin'; }
   </script>
   </head>
 <body>
   <div class="container-fluid">
+    <div id="kycGateOverlay" aria-live="polite">
+      <div class="gate-card">
+        <div class="card shadow-sm border-0">
+          <div class="card-body p-4">
+            <h1 class="h4 mb-3">Complete Your KYC</h1>
+            <p class="text-muted mb-4" id="kycGateMsg">Regulatory compliance requires identity verification before you can access dashboard features.</p>
+            <div class="d-grid gap-2">
+              <a href="#" id="kycGoBtn" class="btn btn-primary btn-lg">Start / Continue KYC</a>
+              <button class="btn btn-outline-secondary" id="kycRefreshStatus" type="button">I already submitted – Recheck</button>
+            </div>
+            <div class="small text-muted mt-3" id="kycGateStatusNote"></div>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="row">
       <aside class="col-12 col-md-3 col-lg-2 sidebar p-3" id="dashSidebar">
         <a class="navbar-brand fw-bold d-block mb-3 d-flex align-items-center gap-2" href="/">
@@ -50,6 +69,7 @@
           <a class="nav-link" href="/chat" id="navChat">Chat</a>
           <a class="nav-link" data-target="#pane-kyc" href="#">KYC</a>
           <a class="nav-link" data-target="#pane-orders" href="#">Orders</a>
+          <a class="nav-link" data-target="#pane-quotations" href="#">Quotations</a>
           <a class="nav-link" data-target="#pane-notifications" href="#">Notifications</a>
           <a class="nav-link" data-target="#pane-settings" href="#">Settings</a>
           <a class="nav-link text-danger" id="dashSignOut" href="#">Sign out</a>
@@ -58,6 +78,21 @@
       <main class="col-12 col-md-9 col-lg-10 p-4">
         <div class="d-flex justify-content-between align-items-center mb-3 gap-3">
           <button class="btn btn-outline-secondary" id="dashBurger" aria-label="Toggle menu">☰</button>
+        <script>
+        // Fallback: ensure KYC overlay buttons are wired even if module execution ordering delays binding
+        window.addEventListener('DOMContentLoaded', function(){
+          const go = document.getElementById('kycGoBtn');
+          const ref = document.getElementById('kycRefreshStatus');
+          if (go && !go.__wired) {
+            go.__wired = true;
+            go.addEventListener('click', function(e){ e.preventDefault(); if (window.switchPane) { window.switchPane('#pane-kyc'); } const ov=document.getElementById('kycGateOverlay'); if(ov) ov.style.display='none'; });
+          }
+          if (ref && !ref.__wired) {
+            ref.__wired = true;
+            ref.addEventListener('click', function(e){ e.preventDefault(); if (window.loadKycStatus) window.loadKycStatus(); });
+          }
+        });
+        </script>
           <div class="d-flex align-items-center gap-3 ms-auto">
             <button class="btn btn-sm btn-outline-secondary" data-theme-toggle type="button">Dark Mode</button>
             <a class="text-decoration-none position-relative" href="#" id="dashBellBtn" role="button" aria-label="Notifications" title="Notifications">
@@ -204,6 +239,58 @@
         <div id="pane-orders" class="pane d-none">
           <h2 class="h5">Orders</h2>
           <p class="text-muted">Coming soon.</p>
+        </div>
+        <div id="pane-quotations" class="pane d-none">
+          <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <h2 class="h5 m-0">Quotations</h2>
+            <div class="d-flex gap-2 align-items-center">
+              <button class="btn btn-sm btn-outline-secondary" id="quoRefreshBtn" type="button">Refresh</button>
+              <div class="input-group input-group-sm" style="width:220px;">
+                <span class="input-group-text">Filter</span>
+                <select class="form-select" id="quoStatusFilter">
+                  <option value="">All</option>
+                  <option value="REQUESTED">Requested</option>
+                  <option value="REPLIED">Replied</option>
+                  <option value="PAID">Paid</option>
+                  <option value="CANCELLED">Cancelled</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="row g-3" id="quoLayout">
+            <div class="col-lg-5 col-xl-4">
+              <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <span class="fw-semibold">Your Requests</span>
+                  <span class="badge text-bg-secondary d-none" id="quoCountBadge">0</span>
+                </div>
+                <div class="list-group list-group-flush small" id="quoList" style="max-height:60vh; overflow:auto;">
+                  <div class="p-3 text-muted">Loading...</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-7 col-xl-8">
+              <div class="card h-100" id="quoDetailCard" style="min-height:300px;">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <div class="fw-semibold" id="quoDetailTitle">Select a quotation</div>
+                  <div class="d-flex gap-2 align-items-center" id="quoDetailActions" style="display:none;">
+                    <div class="dropdown" id="quoPaymentDropdownWrap" style="display:none;">
+                      <button class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown" type="button">Pay</button>
+                      <ul class="dropdown-menu" id="quoPaymentMenu"></ul>
+                    </div>
+                    <span class="badge rounded-pill text-bg-info" id="quoStatusBadge">–</span>
+                  </div>
+                </div>
+                <div class="card-body" id="quoDetailBody">
+                  <div class="text-muted small">Choose a request on the left to view details.</div>
+                </div>
+                <div class="card-footer d-flex justify-content-between align-items-center small" id="quoMetaFooter" style="display:none;">
+                  <div id="quoMetaCreated">—</div>
+                  <div id="quoMetaTotals" class="fw-semibold">—</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         <div id="pane-settings" class="pane d-none">
           <h2 class="h5 mb-3">Settings</h2>

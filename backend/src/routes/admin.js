@@ -8,6 +8,8 @@ router.use(requireAuth, requireRole('ADMIN'));
 router.get('/stats', asyncHandler(ctrl.stats));
 router.get('/users', asyncHandler(ctrl.listUsers));
 router.patch('/users/:id', asyncHandler(ctrl.updateUser));
+router.delete('/users/:id', asyncHandler(ctrl.deleteUser));
+router.post('/users/:id/revoke-tokens', asyncHandler(ctrl.revokeUserTokens));
 
 router.get('/kyc', asyncHandler(ctrl.listKyc));
 router.get('/kyc/:id', asyncHandler(ctrl.getKyc));

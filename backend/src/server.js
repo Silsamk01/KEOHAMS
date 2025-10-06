@@ -65,6 +65,25 @@ server.listen(PORT, () => {
   } catch (e) { logger.warn('SMTP not configured'); }
 });
 
+// Graceful shutdown
+let shuttingDown = false;
+async function shutdown(signal){
+  if (shuttingDown) return; shuttingDown = true;
+  logger.info({ signal }, 'Graceful shutdown start');
+  // Stop accepting new connections
+  server.close(err => {
+    if (err) {
+      logger.error({ err }, 'Error during http close');
+      process.exit(1);
+    }
+    logger.info('HTTP server closed');
+    process.exit(0);
+  });
+  // Force exit safety timer
+  setTimeout(()=>{ logger.warn('Force exiting after timeout'); process.exit(1); }, 10000).unref();
+}
+['SIGTERM','SIGINT'].forEach(sig => process.on(sig, ()=>shutdown(sig)));
+
 process.on('unhandledRejection', (reason) => {
   logger.error({ err: reason }, 'Unhandled Rejection');
 });

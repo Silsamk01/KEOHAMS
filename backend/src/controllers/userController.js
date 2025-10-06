@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
 const db = require('../config/db');
+const { sendMail } = require('../utils/email');
 
 async function generateRecoveryCodes(userId, count = 8) {
   // Invalidate old unused codes
@@ -57,12 +58,36 @@ exports.twofaEnable = async (req, res) => {
   // Clear any existing recovery codes (soft: just delete unused ones)
   await db('twofa_recovery_codes').where({ user_id: req.user.sub, used: 0 }).del();
   const recoveryCodes = await generateRecoveryCodes(req.user.sub);
+  // Audit log
+  try { await db('admin_audit_events').insert({ admin_id: null, target_user_id: req.user.sub, action: 'TWOFA_ENABLE', metadata: JSON.stringify({ ts: new Date().toISOString() }) }); } catch(_){ }
+  // Email notification (best-effort)
+  try {
+    const user = await Users.findById(req.user.sub);
+    if (user?.email) {
+      await sendMail({
+        to: user.email,
+        subject: '2FA Enabled on Your Account',
+        html: `<p>Hello ${user.name || ''},</p><p>Two-Factor Authentication (TOTP) was just <strong>enabled</strong> on your account.</p><p>If you performed this action, no further steps are needed. If not, please disable it immediately and contact support.</p><p>Time: ${new Date().toUTCString()}</p><p>— KEOHAMS Security</p>`
+      });
+    }
+  } catch(e){ console.warn('TwoFA enable email failed:', e.message); }
   res.json({ message: '2FA enabled', recovery_codes: recoveryCodes });
 };
 
 exports.twofaDisable = async (req, res) => {
   await Users.update(req.user.sub, { twofa_secret: null });
   await db('twofa_recovery_codes').where({ user_id: req.user.sub }).del();
+  try { await db('admin_audit_events').insert({ admin_id: null, target_user_id: req.user.sub, action: 'TWOFA_DISABLE', metadata: JSON.stringify({ ts: new Date().toISOString() }) }); } catch(_){ }
+  try {
+    const user = await Users.findById(req.user.sub);
+    if (user?.email) {
+      await sendMail({
+        to: user.email,
+        subject: '2FA Disabled on Your Account',
+        html: `<p>Hello ${user.name || ''},</p><p>Two-Factor Authentication (TOTP) was just <strong>disabled</strong> on your account.</p><p>If you made this change intentionally, you may ignore this message. If this was not you, we strongly recommend re-enabling 2FA and changing your password.</p><p>Time: ${new Date().toUTCString()}</p><p>— KEOHAMS Security</p>`
+      });
+    }
+  } catch(e){ console.warn('TwoFA disable email failed:', e.message); }
   res.json({ message: '2FA disabled' });
 };
 

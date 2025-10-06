@@ -14,6 +14,7 @@ const SIDEBAR_HTML = `
     <a class="nav-link" data-path="/chat" href="/chat">Chat</a>
     <a class="nav-link" data-path="/dashboard" data-pane="kyc" href="/dashboard?pane=kyc">KYC</a>
     <a class="nav-link" data-path="/dashboard" data-pane="orders" href="/dashboard?pane=orders">Orders</a>
+  <a class="nav-link d-flex align-items-center justify-content-between" data-path="/dashboard" data-pane="quotations" href="/dashboard?pane=quotations">Quotations <span class="badge rounded-pill bg-warning text-dark ms-2 d-none" id="sbQuoPending">0</span></a>
     <a class="nav-link" data-path="/dashboard" data-pane="notifications" href="/dashboard?pane=notifications">Notifications</a>
     <a class="nav-link" data-path="/dashboard" data-pane="settings" href="/dashboard?pane=settings">Settings</a>
     <button class="nav-link text-start" type="button" data-theme-toggle style="background:none; border:none;">Dark Mode</button>
@@ -87,4 +88,17 @@ function setupBurger(){
 window.addEventListener('DOMContentLoaded', ()=>{
   ensureSidebar();
   setupBurger();
+  // Attempt to load pending quotations count (best-effort). Requires auth token.
+  try {
+    const t = localStorage.getItem('token');
+    if(t){
+      fetch('http://localhost:4000/api/quotations/mine?page=1&pageSize=50', { headers: { Authorization: 'Bearer '+t } })
+        .then(r=> r.ok ? r.json(): Promise.reject())
+        .then(j=>{
+          const list = j.data||[];
+            const pending = list.filter(q=> q.status==='REQUESTED' || q.status==='REPLIED').length;
+            if(pending>0){ const badge = document.getElementById('sbQuoPending'); if(badge){ badge.textContent=String(pending); badge.classList.remove('d-none'); } }
+        }).catch(()=>{});
+    }
+  } catch(_){ }
 });

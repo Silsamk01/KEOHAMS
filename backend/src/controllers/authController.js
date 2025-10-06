@@ -23,8 +23,19 @@ async function ensureTokensTable() {
 const { verifyCaptcha } = require('../utils/captcha');
 
 exports.register = async (req, res) => {
-  const { name, email, password, phone, address, dob, captchaToken, captchaAnswer } = req.body;
+  let { name, email, password, phone, address, dob, captchaToken, captchaAnswer } = req.body;
   if (!name || !email || !password || !dob) return res.status(400).json({ message: 'Missing fields' });
+  // Basic normalization / trimming to reduce accidental whitespace & simple injection vectors
+  name = String(name).trim();
+  email = String(email).trim().toLowerCase();
+  if (phone) phone = String(phone).trim();
+  if (address) address = String(address).trim();
+
+  // Password complexity: at least 8 chars, one upper, one lower, one number, one symbol
+  const complexity = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+  if (!complexity.test(password)) {
+    return res.status(400).json({ message: 'Password too weak (min 8 chars incl. upper, lower, number, symbol)' });
+  }
   try { verifyCaptcha(captchaToken, captchaAnswer); } catch (e) { return res.status(400).json({ message: e.message }); }
   // Validate age >= 18
   const birth = new Date(dob);
@@ -67,6 +78,9 @@ exports.login = async (req, res) => {
   if (!user) return res.status(401).json({ message: 'Invalid credentials' });
   const ok = await bcrypt.compare(password, user.password_hash);
   if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
+  if (user.is_active === 0 || user.is_active === false) {
+    return res.status(403).json({ message: 'Account inactive. Awaiting admin activation.' });
+  }
 
   // If user has 2FA enabled, require token or recovery code
   if (user.twofa_secret) {
@@ -84,7 +98,7 @@ exports.login = async (req, res) => {
     }
   }
 
-  const token = sign({ sub: user.id, role: user.role });
+  const token = sign({ sub: user.id, role: user.role, tv: user.token_version || 1 });
   return res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar_url: user.avatar_url } });
 };
 
@@ -129,12 +143,12 @@ exports.verifySecondFactor = async (req, res) => {
   if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
   if (!user.twofa_secret) {
     // 2FA not enabled, just issue token
-  const token = sign({ sub: user.id, role: user.role });
+  const token = sign({ sub: user.id, role: user.role, tv: user.token_version || 1 });
   return res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar_url: user.avatar_url } });
   }
   const verified = await verifyTwoFactor(user, twofa_token, recovery_code);
   if (!verified.ok) return res.status(401).json({ message: verified.message || 'Invalid 2FA' });
-  const token = sign({ sub: user.id, role: user.role });
+  const token = sign({ sub: user.id, role: user.role, tv: user.token_version || 1 });
   return res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar_url: user.avatar_url } });
 };
 
@@ -154,10 +168,12 @@ exports.verifyEmail = async (req, res) => {
       address: row.address,
       dob: row.dob,
       role: 'CUSTOMER',
-      email_verified: 1
+      email_verified: 1,
+      is_active: 1
     });
   await db('pending_registrations').where({ id: row.id }).del();
-  const tokenJwt = sign({ sub: userId, role: 'CUSTOMER' });
+  const userRow = await Users.findById(userId);
+  const tokenJwt = sign({ sub: userId, role: 'CUSTOMER', tv: userRow?.token_version || 1 });
   return res.json({ message: 'Email verified. Account created.', token: tokenJwt });
   } else {
     const row = await db('tokens').where({ token, type: 'verify-email' }).first();
@@ -216,7 +232,10 @@ exports.resetPassword = async (req, res) => {
   if (new Date(row.expires_at) < new Date()) return res.status(400).json({ message: 'Token expired' });
 
   const hash = await bcrypt.hash(password, 10);
-  await Users.updatePassword(row.user_id, hash);
+  // bump token_version to invalidate old tokens
+  const user = await Users.findById(row.user_id);
+  await Users.update(row.user_id, { password_hash: hash, token_version: (user?.token_version || 1) + 1 });
+  try { await db('admin_audit_events').insert({ admin_id: null, target_user_id: row.user_id, action: 'PASSWORD_RESET', metadata: JSON.stringify({ self_service: true }) }); } catch(_){}
   await db('tokens').where({ id: row.id }).del();
   return res.json({ message: 'Password updated successfully' });
 };

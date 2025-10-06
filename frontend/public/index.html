@@ -35,7 +35,7 @@
           </li>
           <li class="nav-item"><a class="nav-link" href="/about">About</a></li>
           <li class="nav-item"><a class="nav-link" href="/contact">Contact</a></li>
-          <li class="nav-item"><a class="nav-link" href="/blog">Blog</a></li>
+          <li class="nav-item"><a class="nav-link" href="/blog-public">Blog</a></li>
           <li class="nav-item"><a class="nav-link" href="/shop" data-requires-auth>Shop</a></li>
           <li class="nav-item me-2">
             <select class="form-select form-select-sm" id="currencySelect">
@@ -294,6 +294,17 @@
     </div>
   </section>
 
+  <!-- Public Blog Preview -->
+  <section class="py-5 bg-light border-top">
+    <div class="container">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h5 m-0">From the Blog</h2>
+        <a href="/blog-public" class="small text-decoration-none">View all →</a>
+      </div>
+      <div id="homeBlogPreview" class="row g-3"></div>
+    </div>
+  </section>
+
   <footer class="border-top py-4">
     <div class="container d-flex flex-wrap justify-content-between align-items-center">
       <p class="mb-0 text-muted">© <span id="year"></span> KEOHAMS</p>
@@ -308,6 +319,27 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script type="module" src="/src/js/global.js"></script>
   <script type="module" src="/src/js/main.js"></script>
+  <script type="module">
+    const API_BASE = 'http://localhost:4000/api';
+    async function fetchJSON(u){ const r = await fetch(u); if(!r.ok) throw new Error(); return r.json(); }
+    async function loadBlogPreview(){
+      try {
+        const data = await fetchJSON(`${API_BASE}/blog?meta=1&page=1&pageSize=3`);
+        const posts = data.data.filter(p=>!p.require_login).slice(0,3);
+        const wrap = document.getElementById('homeBlogPreview');
+        wrap.innerHTML = posts.map(p=>`<div class='col-12 col-md-4'>
+          <article class='p-3 bg-white h-100 rounded-3 shadow-sm blog-preview-card' onclick="location.href='/blog/${encodeURIComponent(p.slug)}'" style='cursor:pointer;'>
+            <h3 class='h6 mb-1'>${p.title}</h3>
+            <div class='small text-muted mb-2'>${p.published_at? new Date(p.published_at).toLocaleDateString(): ''}</div>
+            <p class='small m-0'>${(p.excerpt || (p.content||'').slice(0,100)).replace(/\n+/g,' ')}</p>
+          </article>
+        </div>`).join('');
+      } catch(e){
+        // silent fail
+      }
+    }
+    loadBlogPreview();
+  </script>
 
   <!-- Sign In Modal -->
   <div class="modal fade" id="signinModal" tabindex="-1" aria-hidden="true">
@@ -340,6 +372,23 @@
             <div class="text-center mt-2">
               <a href="/forgot" class="small">Forgot password?</a>
             </div>
+          </form>
+          <form id="twofaForm" class="vstack gap-3 d-none" autocomplete="off">
+            <div class="alert alert-info small" id="twofaPrompt">Enter the 6-digit code from your authenticator app.</div>
+            <div>
+              <label class="form-label">Authenticator Code</label>
+              <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" class="form-control" id="twofaTokenInput" placeholder="123456" />
+            </div>
+            <div class="text-center small">or use a recovery code</div>
+            <div>
+              <label class="form-label">Recovery Code</label>
+              <input type="text" class="form-control" id="twofaRecoveryInput" placeholder="RECOVERYCODE" />
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-primary flex-grow-1" type="submit" id="twofaVerifyBtn">Verify</button>
+              <button class="btn btn-outline-secondary" type="button" id="twofaBackBtn">Back</button>
+            </div>
+            <div class="small text-muted" id="twofaStatus"></div>
           </form>
         </div>
       </div>

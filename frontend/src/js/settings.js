@@ -150,51 +150,73 @@ function wireTwofa(){
   const cancelBtn = document.getElementById('twofaCancelBtn');
   const setup = document.getElementById('twofaSetup');
   const recBtn = document.getElementById('twofaShowRecoveryBtn');
+  const qrEl = document.getElementById('twofaQR');
+  const keyEl = document.getElementById('twofaKey');
+  const tokenEl = document.getElementById('twofaToken');
   const recoveryModalEl = document.getElementById('recoveryCodesModal');
   const recoveryList = document.getElementById('recoveryCodesList');
+  let busy = false;
   let recoveryModal;
   if (recoveryModalEl && window.bootstrap) recoveryModal = new bootstrap.Modal(recoveryModalEl);
 
-  beginBtn.addEventListener('click', async ()=>{
+  function guard(el, handler){ if(!el) return; el.addEventListener('click', handler); }
+  function setLoading(btn, on){ if(!btn) return; if(on){ btn.disabled = true; btn.dataset.origText = btn.textContent; btn.textContent = 'Please wait…'; } else { btn.disabled = false; if(btn.dataset.origText) btn.textContent = btn.dataset.origText; } }
+
+  guard(beginBtn, async ()=>{
+    if (busy) return; busy = true; setLoading(beginBtn, true);
     try {
       const s = await fetchJSON(`${API_BASE}/user/profile/2fa/setup`, { method:'POST', body: JSON.stringify({}) });
-      setup.classList.remove('d-none');
-      document.getElementById('twofaQR').src = s.qr;
-      document.getElementById('twofaKey').textContent = s.base32;
-      document.getElementById('twofaToken').value = '';
-    } catch(e){ alert(e.message || 'Setup failed'); }
+      if (setup) setup.classList.remove('d-none');
+      if (qrEl) qrEl.src = s.qr;
+      if (keyEl) keyEl.textContent = s.base32;
+      if (tokenEl) tokenEl.value = '';
+      // Hide initial button while in setup stage
+      beginBtn.classList.add('d-none');
+      window.showToast && showToast('2FA setup initialized. Scan the QR and enter a code.', { type:'info' });
+    } catch(e){ window.showToast ? showToast(e.message || 'Setup failed', { type:'error' }) : alert(e.message || 'Setup failed'); }
+    finally { busy = false; setLoading(beginBtn, false); }
   });
-  enableBtn.addEventListener('click', async ()=>{
-    const base32 = document.getElementById('twofaKey').textContent.trim();
-    const token = document.getElementById('twofaToken').value.trim();
-    if (!token){ alert('Enter the 6-digit code from your authenticator app.'); return; }
-    try { 
-      const resp = await fetchJSON(`${API_BASE}/user/profile/2fa/enable`, { method:'POST', body: JSON.stringify({ base32, token }) }); 
-      renderTwofa(true); 
-      if (resp.recovery_codes && recoveryList) { 
+
+  guard(enableBtn, async ()=>{
+    if (busy) return; busy = true; setLoading(enableBtn, true);
+    const base32 = (keyEl?.textContent || '').trim();
+    const token = (tokenEl?.value || '').trim();
+    if (!token){ alert('Enter the 6-digit code from your authenticator app.'); busy=false; setLoading(enableBtn,false); return; }
+    try {
+      const resp = await fetchJSON(`${API_BASE}/user/profile/2fa/enable`, { method:'POST', body: JSON.stringify({ base32, token }) });
+      renderTwofa(true);
+      if (setup) setup.classList.add('d-none');
+      if (resp.recovery_codes && recoveryList){
         recoveryList.textContent = resp.recovery_codes.join('\n');
         recoveryModal && recoveryModal.show();
       }
-      alert('2FA enabled'); 
-    }
-    catch(e){ alert(e.message || 'Invalid code'); }
+      window.showToast ? showToast('Two-Factor Authentication enabled', { type:'success' }) : alert('2FA enabled');
+    } catch(e){ window.showToast ? showToast(e.message || 'Invalid code', { type:'error' }) : alert(e.message || 'Invalid code'); }
+    finally { busy=false; setLoading(enableBtn,false); }
   });
-  disableBtn.addEventListener('click', async ()=>{
-    if (!confirm('Disable 2FA?')) return;
-    try { await fetchJSON(`${API_BASE}/user/profile/2fa/disable`, { method:'POST', body: JSON.stringify({}) }); renderTwofa(false); }
-    catch(e){ alert(e.message || 'Failed'); }
-  });
-  cancelBtn.addEventListener('click', ()=>{ setup.classList.add('d-none'); });
 
-  recBtn.addEventListener('click', async ()=>{
+  guard(disableBtn, async ()=>{
+    if (!confirm('Disable 2FA?')) return;
+    if (busy) return; busy=true; setLoading(disableBtn,true);
+  try { await fetchJSON(`${API_BASE}/user/profile/2fa/disable`, { method:'POST', body: JSON.stringify({}) }); renderTwofa(false); window.showToast ? showToast('Two-Factor Authentication disabled', { type:'warning' }) : alert('2FA disabled'); }
+  catch(e){ window.showToast ? showToast(e.message || 'Failed', { type:'error' }) : alert(e.message || 'Failed'); }
+    finally { busy=false; setLoading(disableBtn,false); }
+  });
+
+  guard(cancelBtn, ()=>{ if (setup) setup.classList.add('d-none'); if (beginBtn) beginBtn.classList.remove('d-none'); });
+
+  guard(recBtn, async ()=>{
     if (!confirm('Generate a NEW set of recovery codes? Old unused codes become invalid. Continue?')) return;
+    if (busy) return; busy=true; setLoading(recBtn,true);
     try {
       const resp = await fetchJSON(`${API_BASE}/user/profile/2fa/recovery/regenerate`, { method:'POST', body: JSON.stringify({}) });
       if (resp.recovery_codes && recoveryList){
         recoveryList.textContent = resp.recovery_codes.join('\n');
         recoveryModal && recoveryModal.show();
-      } else alert('Regenerated');
-    } catch(e){ alert(e.message || 'Failed to regenerate'); }
+        window.showToast && showToast('New recovery codes generated', { type:'info' });
+      } else { window.showToast ? showToast('Recovery codes regenerated', { type:'info' }) : alert('Regenerated'); }
+    } catch(e){ window.showToast ? showToast(e.message || 'Failed to regenerate', { type:'error' }) : alert(e.message || 'Failed to regenerate'); }
+    finally { busy=false; setLoading(recBtn,false); }
   });
 }
 
@@ -205,25 +227,7 @@ function wireSignOut(){
 }
 
 // ---------- Avatar Upload ----------
-function wireAvatar(){
-  const input = document.getElementById('avatarInput'); if (!input) return;
-  const preview = document.getElementById('avatarPreview');
-  const status = document.getElementById('avatarStatus');
-  input.addEventListener('change', async ()=>{
-    const file = input.files[0]; if (!file) return;
-    // preview
-    const reader = new FileReader(); reader.onload = e => { if (preview) preview.src = e.target.result; }; reader.readAsDataURL(file);
-    status.textContent = 'Uploading...';
-    const fd = new FormData(); fd.append('avatar', file);
-    try {
-      const res = await fetch(`${API_BASE}/user/profile/avatar`, { method:'POST', headers: { ...(authHeaders()) }, body: fd });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-      status.textContent = 'Updated';
-      setTimeout(()=> status.textContent='', 2000);
-    } catch(e){ status.textContent = e.message || 'Upload failed'; }
-  });
-}
+// (Removed duplicate wireAvatar definition - consolidated earlier implementation handles avatar upload.)
 
 (function init(){
   try { requireAuth(); } catch { return; }
@@ -235,3 +239,17 @@ function wireAvatar(){
   wirePhoneSave();
   loadProfile();
 })();
+
+// Recovery codes UX enhancements (copy / download / acknowledge)
+document.addEventListener('DOMContentLoaded', ()=>{
+  const listEl = document.getElementById('recoveryCodesList');
+  const copyBtn = document.getElementById('copyRecoveryCodesBtn');
+  const dlBtn = document.getElementById('downloadRecoveryCodesBtn');
+  const ackChk = document.getElementById('ackRecoveryCodesChk');
+  const doneBtn = document.getElementById('closeRecoveryCodesBtn');
+  function updateDone(){ if(doneBtn) doneBtn.disabled = !ackChk?.checked; }
+  ackChk?.addEventListener('change', updateDone);
+  copyBtn?.addEventListener('click', ()=>{ try { navigator.clipboard.writeText((listEl?.textContent||'').trim()); copyBtn.textContent='Copied'; setTimeout(()=> copyBtn.textContent='Copy', 1500);} catch(_){ } });
+  dlBtn?.addEventListener('click', ()=>{ try { const blob=new Blob([(listEl?.textContent||'').trim()+"\n"], { type:'text/plain' }); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='keohams_recovery_codes.txt'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 1500);} catch(_){ } });
+  updateDone();
+});

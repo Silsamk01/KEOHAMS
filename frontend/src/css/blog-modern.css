@@ -1,0 +1,68 @@
+/* Modern Blog UI Styles */
+:root {
+  --blog-card-bg: var(--bs-body-bg, #fff);
+  --blog-card-border: rgba(0,0,0,.075);
+  --blog-card-hover: rgba(255,200,92,.15);
+  --blog-accent: #2f5337;
+  --blog-radius: 14px;
+  --skeleton-bg: linear-gradient(90deg, rgba(0,0,0,0.06) 25%, rgba(0,0,0,0.12) 37%, rgba(0,0,0,0.06) 63%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --blog-card-border: rgba(255,255,255,.12);
+    --blog-card-hover: rgba(255,200,92,.10);
+    --skeleton-bg: linear-gradient(90deg, rgba(255,255,255,0.08) 25%, rgba(255,255,255,0.15) 37%, rgba(255,255,255,0.08) 63%);
+  }
+}
+
+.blog-toolbar { gap: .75rem; flex-wrap: wrap; }
+.blog-toolbar .form-control { max-width: 320px; }
+
+.blog-grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+
+.blog-card { position: relative; background: var(--blog-card-bg); border:1px solid var(--blog-card-border); border-radius: var(--blog-radius); padding:1.1rem 1.1rem 1.25rem; cursor:pointer; display:flex; flex-direction:column; box-shadow:0 2px 4px -2px rgba(0,0,0,.08), 0 4px 18px -8px rgba(0,0,0,.07); transition: background .18s, transform .18s, box-shadow .25s; }
+.blog-card:hover { background: var(--blog-card-hover); transform:translateY(-2px); box-shadow:0 4px 12px -4px rgba(0,0,0,.18), 0 8px 30px -8px rgba(0,0,0,.12); }
+.blog-card h2 { font-size:1.075rem; line-height:1.25; margin:0 0 .35rem; font-weight:600; letter-spacing:.2px; }
+.blog-card .meta { font-size:.725rem; text-transform:uppercase; letter-spacing:.5px; font-weight:500; color: var(--bs-secondary-color,#6c757d); margin-bottom:.5rem; display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; }
+.blog-card p { font-size:.875rem; margin:0; color: var(--bs-body-color); line-height:1.35rem; }
+.blog-card .lock { font-size:.85rem; margin-left:auto; }
+.blog-card .tag { background:rgba(0,0,0,.05); padding:.15rem .5rem; border-radius:20px; font-size:.65rem; font-weight:500; }
+
+.blog-empty { text-align:center; padding:2.5rem 1rem; opacity:.7; font-size:.9rem; }
+
+.infinite-sentinel { height:40px; }
+
+/* Skeleton loaders */
+.skeleton-card { position:relative; overflow:hidden; border:1px solid var(--blog-card-border); border-radius: var(--blog-radius); padding:1.1rem; }
+.skeleton-anim { background-size: 400% 100%; animation: skeleton-loading 1.15s ease-in-out infinite; background-image: var(--skeleton-bg); }
+.sk-line { height:12px; border-radius:6px; margin-bottom:10px; }
+.sk-line.w40 { width:40%; }
+.sk-line.w55 { width:55%; }
+.sk-line.w65 { width:65%; }
+.sk-line.w80 { width:80%; }
+.sk-line.w90 { width:90%; }
+.sk-line.big { height:18px; border-radius:8px; }
+
+@keyframes skeleton-loading { 0%{background-position:0 0;} 100%{ background-position: -200% 0; } }
+
+/* Post page hero */
+.post-hero { padding:4.5rem 0 2.5rem; background: radial-gradient(circle at 28% 12%, rgba(255,200,92,.35), transparent 60%), linear-gradient(135deg, rgba(47,83,55,.08), rgba(47,83,55,.02)); border-bottom:1px solid var(--blog-card-border); }
+.post-hero h1 { font-weight:650; font-size:clamp(1.85rem, 4vw, 2.6rem); line-height:1.12; margin-bottom:1rem; }
+.post-meta-line { display:flex; flex-wrap:wrap; gap:.6rem 1.2rem; font-size:.75rem; letter-spacing:.5px; text-transform:uppercase; font-weight:500; color: var(--bs-secondary-color,#6c757d); }
+.reading-time { display:inline-flex; align-items:center; gap:.3rem; }
+.share-buttons { display:flex; gap:.5rem; }
+.share-buttons button { border:1px solid var(--blog-card-border); background:var(--blog-card-bg); padding:.4rem .7rem; border-radius:8px; font-size:.75rem; font-weight:500; letter-spacing:.4px; display:inline-flex; align-items:center; gap:.4rem; }
+.share-buttons button:hover { background:var(--blog-card-hover); }
+
+.article-body { font-size:1rem; line-height:1.6; }
+.article-body p { margin-bottom:1.15rem; }
+.article-body h2, .article-body h3 { margin-top:2.2rem; font-weight:600; letter-spacing:.2px; }
+.article-body pre { background:#111; color:#eee; padding:1rem; border-radius:10px; font-size:.8rem; overflow:auto; }
+
+.related-posts { margin-top:3.5rem; }
+.related-posts h3 { font-size:1.05rem; font-weight:600; margin-bottom:1rem; letter-spacing:.3px; }
+
+/* Utility */
+.fade-in { animation: fade-in .35s ease forwards; opacity:0; }
+@keyframes fade-in { to { opacity:1; } }

@@ -14,20 +14,31 @@ const storage = multer.diskStorage({
   }
 });
 
-const fileFilter = (req, file, cb) => {
-  // allow common image/video/doc types; extended for camera captures (webm, heic/heif, m4v)
-  const nameAllowed = /\.(jpg|jpeg|png|gif|webp|heic|heif|mp4|mov|m4v|avi|mkv|webm|pdf|docx?)$/i;
-  const typeAllowed = /^(image\/(jpeg|png|gif|webp|heic|heif)|video\/(mp4|quicktime|x-m4v|x-msvideo|x-matroska|webm)|application\/(pdf|msword|vnd\.openxmlformats-officedocument\.wordprocessingml\.document))$/i;
-  const okByName = nameAllowed.test(file.originalname || '');
-  const okByType = typeAllowed.test(file.mimetype || '');
-  if (!(okByName || okByType)) return cb(new Error('Unsupported file type'));
+// Central allowlists (tighten as needed)
+const EXT_WHITELIST = [
+  '.jpg','.jpeg','.png','.webp','.gif', // images
+  '.mp4','.mov','.webm', // limited video set (exclude mkv/avi for risk & transcoding simplicity)
+  '.pdf'
+];
+const MIME_WHITELIST = [
+  'image/jpeg','image/png','image/webp','image/gif',
+  'video/mp4','video/quicktime','video/webm',
+  'application/pdf'
+];
+
+function fileFilter(req, file, cb) {
+  const ext = (file.originalname && file.originalname.includes('.')) ? file.originalname.substring(file.originalname.lastIndexOf('.')).toLowerCase() : '';
+  if (!EXT_WHITELIST.includes(ext) || !MIME_WHITELIST.includes(file.mimetype)) {
+    return cb(new Error('Unsupported file type'));
+  }
   cb(null, true);
-};
+}
 
-// Default upload (20MB max per file)
-const upload = multer({ storage, fileFilter, limits: { fileSize: 20 * 1024 * 1024 } });
+// Size limits (tune as needed)
+const DEFAULT_MAX = 10 * 1024 * 1024; // 10MB generic
+const KYC_MAX = 50 * 1024 * 1024; // 50MB for video/selfie
 
-// KYC upload with larger allowed sizes (e.g., up to 100MB files)
-const kycUpload = multer({ storage, fileFilter, limits: { fileSize: 100 * 1024 * 1024 } });
+const upload = multer({ storage, fileFilter, limits: { fileSize: DEFAULT_MAX } });
+const kycUpload = multer({ storage, fileFilter, limits: { fileSize: KYC_MAX } });
 
 module.exports = { upload, kycUpload };

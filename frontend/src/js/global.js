@@ -1,14 +1,66 @@
 const API_BASE = 'http://localhost:4000/api';
 function getToken(){ try { return localStorage.getItem('token'); } catch { return null; } }
 function authHeaders(){ const t = getToken(); return t ? { Authorization: `Bearer ${t}` } : {}; }
-async function fetchJSON(url, opts={}){ const r = await fetch(url, { ...opts, headers: { ...(opts.headers||{}), ...authHeaders() } }); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+async function fetchJSON(url, opts={}){
+  const r = await fetch(url, { ...opts, headers: { ...(opts.headers||{}), ...authHeaders() } });
+  if (r.status === 451) {
+    // KYC required: show modal or redirect to dashboard#kyc
+    triggerKycRequired();
+    throw new Error('KYC required');
+  }
+  if (r.status === 401 || r.status === 404) {
+    try { localStorage.removeItem('token'); } catch(_){ }
+    if (!location.pathname.startsWith('/login') && location.pathname !== '/') {
+      setTimeout(()=> { location.replace('/'); }, 50);
+    }
+  }
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+function triggerKycRequired(){
+  // If on dashboard, switch to KYC pane; else redirect to dashboard with hash
+  if (location.pathname === '/dashboard') {
+    try {
+      const kycTabBtn = document.querySelector('[data-tab="kyc"]');
+      if (kycTabBtn) { kycTabBtn.click(); }
+      showKycModal();
+    } catch(_){ showKycModal(); }
+  } else {
+    // store intent maybe; simple redirect for now
+    location.replace('/dashboard#kyc-required');
+  }
+}
+
+function showKycModal(){
+  // Attempt to reuse existing modal id if present
+  let modalEl = document.getElementById('kycRequiredModal');
+  if (!modalEl) {
+    // Lightweight inline modal injection (Bootstrap 5 expected on most pages)
+    const div = document.createElement('div');
+    div.innerHTML = `\n<div class="modal fade" id="kycRequiredModal" tabindex="-1" aria-hidden="true">\n  <div class="modal-dialog modal-dialog-centered">\n    <div class="modal-content">\n      <div class="modal-header">\n        <h5 class="modal-title">KYC Required</h5>\n        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>\n      </div>\n      <div class="modal-body">\n        <p class="mb-2">You must complete KYC verification to proceed.</p>\n        <ol class="small mb-0 ps-3">\n          <li>Prepare your government-issued ID.</li>\n          <li>Submit required photos & video.</li>\n          <li>Wait for approval notification.</li>\n        </ol>\n      </div>\n      <div class="modal-footer">\n        <a href="/dashboard#kyc" class="btn btn-primary">Go to KYC</a>\n      </div>\n    </div>\n  </div>\n</div>`;
+    document.body.appendChild(div.firstElementChild);
+    modalEl = document.getElementById('kycRequiredModal');
+  }
+  try {
+    if (window.bootstrap && window.bootstrap.Modal) {
+      const m = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+      m.show();
+    } else {
+      alert('KYC required. Please complete verification.');
+    }
+  } catch { alert('KYC required. Please complete verification.'); }
+}
 
 async function loadAvatar(){
   const token = getToken(); if(!token) return hideAuthUI();
   try {
     const me = await fetchJSON(`${API_BASE}/auth/me`);
     document.querySelectorAll('[data-global-avatar]').forEach(img=>{ img.src = me.avatar_url || 'https://via.placeholder.com/48x48.png?text=U'; });
-  } catch { hideAuthUI(); }
+  } catch {
+    // If 401/404 produced logout above, UI should hide
+    hideAuthUI();
+  }
 }
 
 async function loadUnread(){

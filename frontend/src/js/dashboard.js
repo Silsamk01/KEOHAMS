@@ -1,5 +1,33 @@
 const API_BASE = 'http://localhost:4000/api';
 let kycApproved = false;
+let kycPollTimer = null;
+const KYC_CACHE_KEY = 'kycStatusCache'; // sessionStorage key
+let pendingPaneAfterKyc = null; // remembers the pane user wanted before gating
+
+function readKycCache(){
+  try { const raw = sessionStorage.getItem(KYC_CACHE_KEY); if(!raw) return null; const obj = JSON.parse(raw); if(!obj || !obj.status) return null; if(Date.now() - (obj.ts||0) > 60_000) return null; return obj; } catch(_){ return null; }
+}
+function writeKycCache(statusObj){
+  try { sessionStorage.setItem(KYC_CACHE_KEY, JSON.stringify({ ...statusObj, ts: Date.now() })); } catch(_){ }
+}
+
+function showRedirectContext(){
+  const params = new URLSearchParams(location.search);
+  const from = params.get('from');
+  const reason = params.get('reason');
+  if(!from && !reason) return;
+  const note = document.getElementById('kycGateStatusNote');
+  if(!note) return;
+  const map = {
+    no_submission: 'You have not started KYC yet.',
+    pending: 'Your KYC is still pending review.',
+    rejected: 'Your previous KYC was rejected. Please resubmit.',
+    timeout: 'Could not confirm your KYC status in time.',
+    network_error: 'Network issue while checking KYC status.',
+  };
+  const base = from ? `Redirected from ${from}` : 'Redirected';
+  note.textContent = base + (reason?`: ${map[reason]||reason}`:'');
+}
 
 // Ensure unread notification refresh when marking notifications read
 async function fetchNotifUnread(){
@@ -74,12 +102,52 @@ async function fetchJSON(url, opts={}) {
   return res.json();
 }
 
+// Only overview + KYC accessible before approval; quotations must pass KYC
+const ALLOWED_UNVERIFIED_PANES = new Set(['#pane-overview', '#pane-kyc']);
+function showKycOverlay() {
+  const ov = document.getElementById('kycGateOverlay');
+  if (ov) ov.style.display = 'flex';
+}
+function hideKycOverlay() {
+  const ov = document.getElementById('kycGateOverlay');
+  if (ov) ov.style.display = 'none';
+}
 function switchPane(id) {
+  // Enforce KYC gating even for programmatic/deep-link switches
+  if (!kycApproved && !ALLOWED_UNVERIFIED_PANES.has(id)) {
+    // Show gating modal and redirect to KYC pane
+    showKycModal();
+    // Remember what user attempted so we can restore once approved
+    if (!pendingPaneAfterKyc) pendingPaneAfterKyc = id;
+    id = '#pane-kyc';
+  }
   document.querySelectorAll('.pane').forEach(p => p.classList.add('d-none'));
   document.querySelector(id)?.classList.remove('d-none');
   document.querySelectorAll('#dashNav .nav-link').forEach(a => a.classList.remove('active'));
   document.querySelector(`#dashNav .nav-link[data-target="${id}"]`)?.classList.add('active');
   if (id === '#pane-settings') ensureSettingsInitialized();
+
+  // Normalize URL (?pane=...) without duplicating parameters or using stray semicolons
+  try {
+    const paneValue = (id.startsWith('#pane-') ? id.replace('#pane-','') : id).toLowerCase();
+    const current = new URL(window.location.href);
+    // Only update if actually changed to avoid polluting history
+    if (current.pathname === '/dashboard') {
+      // Clean any legacy duplicates like ';pane=' in search string
+      let rawSearch = current.search.replace(/;pane=[^&;]*/gi, '');
+      const params = new URLSearchParams(rawSearch);
+      if (params.get('pane') !== paneValue) {
+        params.set('pane', paneValue);
+        const newUrl = `${current.origin}${current.pathname}?${params.toString()}`;
+        // Replace state so back button isn't cluttered by every tab click
+        window.history.replaceState(null, document.title, newUrl);
+      } else if (rawSearch.includes(';pane=')) {
+        // Even if same value, still rewrite to remove artifacts
+        const newUrl = `${current.origin}${current.pathname}?${params.toString()}`;
+        window.history.replaceState(null, document.title, newUrl);
+      }
+    }
+  } catch(_){ /* ignore URL update errors */ }
 }
 
 function showKycModal() {
@@ -108,21 +176,43 @@ function hideKycModal() {
 function updateNavGating() {
   document.querySelectorAll('#dashNav .nav-link').forEach(a => {
     const target = a.getAttribute('data-target');
-    const isGatable = target && target !== '#pane-kyc' && target !== '#pane-overview';
-    if (isGatable) {
-      if (!kycApproved) {
-        a.setAttribute('data-gated', 'true');
-        a.classList.add('text-muted');
-      } else {
-        a.removeAttribute('data-gated');
-        a.classList.remove('text-muted');
-      }
+    if (!target) return;
+    if (target === '#pane-kyc') return; // KYC pane always accessible
+    if (!kycApproved) {
+      a.setAttribute('data-gated', 'true');
+      a.classList.add('text-muted');
+      a.classList.add('disabled');
+      a.setAttribute('tabindex','-1');
+      a.setAttribute('aria-disabled','true');
+    } else {
+      a.removeAttribute('data-gated');
+      a.classList.remove('text-muted','disabled');
+      a.removeAttribute('tabindex');
+      a.removeAttribute('aria-disabled');
     }
   });
+  // Ensure click interception registered once
+  if (!window.__dashKycGateBound) {
+    window.__dashKycGateBound = true;
+    document.getElementById('dashNav')?.addEventListener('click', (e)=>{
+      const link = e.target.closest('.nav-link[data-gated="true"]');
+      if (link) {
+        e.preventDefault();
+        showKycModal();
+        // Always switch to KYC pane to guide user
+        switchPane('#pane-kyc');
+      }
+    });
+  }
 }
 
 async function loadKycStatus() {
   try {
+    // Use cached value to optimistically render gating faster
+    const cached = readKycCache();
+    if(cached && !kycApproved) {
+      if(cached.status === 'APPROVED') { kycApproved = true; hideKycOverlay(); updateNavGating(); }
+    }
     const row = await fetchJSON(`${API_BASE}/kyc/me`);
     const banner = document.getElementById('kycBanner');
     const statusEl = document.getElementById('kycStatus');
@@ -133,6 +223,8 @@ async function loadKycStatus() {
       banner.textContent = 'Your account is not verified. Please complete KYC to access all features.';
       statusEl.innerHTML = '<div class="alert alert-info">No submission yet. Please submit your documents.</div>';
       updateNavGating();
+      showKycOverlay();
+      writeKycCache({ status: 'NONE' });
       return;
     }
     const status = row.status;
@@ -141,6 +233,15 @@ async function loadKycStatus() {
       banner.style.display = 'none';
       statusEl.innerHTML = '<div class="alert alert-success">KYC approved. You have full access.</div>';
       document.getElementById('kycForm')?.classList.add('d-none');
+      hideKycOverlay();
+      writeKycCache({ status: 'APPROVED' });
+      if(kycPollTimer){ clearInterval(kycPollTimer); kycPollTimer=null; }
+      // If we previously forced user to KYC pane, restore intended pane once
+      if (pendingPaneAfterKyc) {
+        const restore = pendingPaneAfterKyc; pendingPaneAfterKyc = null;
+        // Defer to allow DOM updates
+        setTimeout(()=> switchPane(restore), 50);
+      }
     } else if (status === 'REJECTED') {
       kycApproved = false;
       banner.style.display = 'block';
@@ -148,6 +249,10 @@ async function loadKycStatus() {
       banner.textContent = 'KYC rejected. Please resubmit your documents.';
       statusEl.innerHTML = `<div class="alert alert-danger">Rejected${row.review_notes?': '+row.review_notes:''}</div>`;
       document.getElementById('kycForm')?.classList.remove('d-none');
+      showKycOverlay();
+      writeKycCache({ status: 'REJECTED' });
+      // Keep polling in case user resubmits quickly from another tab
+      ensureKycPolling();
     } else {
       kycApproved = false;
       banner.style.display = 'block';
@@ -155,11 +260,35 @@ async function loadKycStatus() {
       banner.textContent = 'KYC pending review by admin.';
       statusEl.innerHTML = '<div class="alert alert-warning">Pending review.</div>';
       document.getElementById('kycForm')?.classList.add('d-none');
+      showKycOverlay();
+      writeKycCache({ status: 'PENDING' });
+      ensureKycPolling();
     }
     updateNavGating();
   } catch (e) {
     console.error('kyc status failed', e);
+    const banner = document.getElementById('kycBanner');
+    if (banner && !kycApproved){
+      banner.style.display='block';
+      banner.className='alert alert-secondary';
+      banner.textContent='Unable to verify KYC status (offline). We will retry shortly.';
+    }
+    // Schedule a retry in 15s if not already polling
+    ensureKycPolling(15_000);
   }
+}
+
+// Expose a couple of functions for the non-module fallback inline script (dashboard.html)
+// Only attach if not already present to avoid collisions.
+if (typeof window !== 'undefined') {
+  if (!window.switchPane) window.switchPane = switchPane;
+  if (!window.loadKycStatus) window.loadKycStatus = loadKycStatus;
+}
+
+function ensureKycPolling(interval=30_000){
+  if(kycApproved) { if(kycPollTimer){ clearInterval(kycPollTimer); kycPollTimer=null; } return; }
+  if(kycPollTimer) return;
+  kycPollTimer = setInterval(()=>{ if(!kycApproved) loadKycStatus(); }, interval);
 }
 
 async function loadDashNotifs(){
@@ -206,6 +335,7 @@ function escapeHtml(s){ return s.replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;"
 async function loadOverview(){
   try {
     const me = await fetchJSON(`${API_BASE}/auth/me`);
+  // loadOverview end of try block continues below
     const elName = document.getElementById('dashUserName'); 
     if (elName) elName.textContent = me.name || 'User';
     if (me.avatar_url) {
@@ -222,6 +352,24 @@ async function loadOverview(){
     const el = document.getElementById('dashOrders'); 
     if (el) el.textContent = String(count);
   } catch(_){ }
+}
+
+// Ensure KYC overlay wiring defined at top-level (was previously accidentally inside loadOverview)
+function wireKycOverlay(attempt=1){
+  const go = document.getElementById('kycGoBtn');
+  const ref = document.getElementById('kycRefreshStatus');
+  if (go && !go.__wired) {
+    go.__wired = true;
+    go.addEventListener('click', (e)=>{ e.preventDefault(); switchPane('#pane-kyc'); hideKycOverlay(); });
+  }
+  if (ref && !ref.__wired) {
+    ref.__wired = true;
+    ref.addEventListener('click', async (e)=>{ e.preventDefault(); ref.disabled = true; ref.textContent='Checking...'; try { await loadKycStatus(); } finally { ref.disabled=false; ref.textContent='I already submitted – Recheck'; } });
+  }
+  // If elements not yet in DOM (edge case with slow parse), retry a couple of times
+  if (attempt < 5 && (!go || !ref)) {
+    setTimeout(()=>wireKycOverlay(attempt+1), 200 * attempt);
+  }
 }
 
 // =============================
@@ -453,6 +601,7 @@ function wireKycForm() {
 import { initChatWidget } from './chat.js';
 import { fetchMyThreads, openExistingThread } from './chat.js';
 import { } from './chat.js';
+import { initQuotationsUI } from './quotations.js';
 
 // ============ Dashboard Chats Pane ============
 async function loadDashChatThreads(){
@@ -533,11 +682,17 @@ window.__chatThreadUpdate = function updateThreadMeta(payload){
     chats: '#pane-chats'
   };
   const targetPane = paneMap[pane] || '#pane-overview';
+  // Optimistically mark approved if cache says so before first switch
+  try { const c = readKycCache(); if(c && c.status==='APPROVED') { kycApproved = true; } } catch(_){ }
+  // Initial switch will be gated by switchPane itself if KYC not yet approved
   switchPane(targetPane);
   loadKycStatus();
+  wireKycOverlay();
   setupKycCamera();
   loadOverview();
   setupCurrencyConverter();
+  // Initialize quotations UI (lazy loads data when pane first shown)
+  try { initQuotationsUI(); } catch(_){ }
   loadDashNotifs();
   renderCartBadge();
   document.getElementById('dashBellBtn')?.addEventListener('click', (e)=>{ e.preventDefault(); switchPane('#pane-notifications'); loadDashNotifs(); });

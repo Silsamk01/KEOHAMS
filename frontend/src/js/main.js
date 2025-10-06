@@ -183,15 +183,19 @@ function wireEvents() {
 							els.signinCaptchaAnswer?.classList.add('is-invalid');
 							return;
 						}
-						const user = await loginWithCaptcha(els.signinEmail.value.trim(), els.signinPassword.value, captchaToken, captchaAnswer);
-					// If the logged-in user is an admin, redirect straight to the admin dashboard
-					if (user && user.role === 'ADMIN') {
-						try { bootstrap.Modal.getInstance(els.signinModal).hide(); } catch(_){}
-						window.location.href = '/admin';
-						return;
+					const resp = await loginAttempt(els.signinEmail.value.trim(), els.signinPassword.value, captchaToken, captchaAnswer);
+					if (resp.twofa_required) {
+						// Show 2FA form, hide primary form
+						document.getElementById('signinForm')?.classList.add('d-none');
+						const tf = document.getElementById('twofaForm'); tf?.classList.remove('d-none');
+						document.getElementById('twofaStatus').textContent='';
+						document.getElementById('twofaTokenInput').focus();
+						return; // Wait for second factor
 					}
-					try { bootstrap.Modal.getInstance(els.signinModal).hide(); } catch(_){}
-					// Redirect customers to their dashboard
+					// Success path (no 2FA required)
+					const user = resp.user;
+					if (user && user.role === 'ADMIN') { try { bootstrap.Modal.getInstance(els.signinModal).hide(); } catch(_){ } window.location.href = '/admin'; return; }
+					try { bootstrap.Modal.getInstance(els.signinModal).hide(); } catch(_){ }
 					window.location.href = '/dashboard';
 					return;
 				} catch (err) {
@@ -263,8 +267,42 @@ async function loginWithCaptcha(email, password, captchaToken, captchaAnswer) {
 	});
 	if (!res.ok) throw new Error('Invalid credentials or captcha');
 	const data = await res.json();
-	saveToken(data.token);
-	return data.user;
+	if (data.twofa_required) return { twofa_required: true };
+	if (data.token) { saveToken(data.token); }
+	return data;
+}
+
+async function loginAttempt(email, password, captchaToken, captchaAnswer){
+	return loginWithCaptcha(email, password, captchaToken, captchaAnswer);
+}
+
+// 2FA verification step
+const twofaForm = document.getElementById('twofaForm');
+if (twofaForm) {
+	twofaForm.addEventListener('submit', async (e)=>{
+		e.preventDefault();
+		const status = document.getElementById('twofaStatus');
+		status.textContent = 'Verifying...';
+		const tokenInput = document.getElementById('twofaTokenInput');
+		const recoveryInput = document.getElementById('twofaRecoveryInput');
+		const email = document.getElementById('signinEmail').value.trim();
+		const password = document.getElementById('signinPassword').value;
+		const twofa_token = tokenInput.value.trim();
+		const recovery_code = recoveryInput.value.trim();
+		try {
+			const res = await fetch(`${API_BASE}/auth/verify-2fa`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ email, password, twofa_token: twofa_token||undefined, recovery_code: recovery_code||undefined }) });
+			if (!res.ok) throw new Error((await res.text())||'Invalid 2FA');
+			const data = await res.json();
+			if (data.token) saveToken(data.token);
+			try { bootstrap.Modal.getInstance(els.signinModal).hide(); } catch(_){ }
+			if (data.user?.role==='ADMIN') window.location.href='/admin'; else window.location.href='/dashboard';
+		} catch(err){ status.textContent = err.message || 'Verification failed'; }
+	});
+	const backBtn = document.getElementById('twofaBackBtn');
+	backBtn?.addEventListener('click', ()=>{
+		document.getElementById('twofaForm')?.classList.add('d-none');
+		document.getElementById('signinForm')?.classList.remove('d-none');
+	});
 }
 
 		async function refreshAuthState() {

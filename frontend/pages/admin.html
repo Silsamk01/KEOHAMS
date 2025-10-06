@@ -7,6 +7,35 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="/src/css/styles.css" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    #kycModal .modal-dialog {
+      max-width: 90vw;
+    }
+    #kycModal .card {
+      transition: transform 0.2s;
+    }
+    #kycModal .card:hover {
+      transform: translateY(-2px);
+    }
+    #kycModal img {
+      transition: transform 0.2s;
+    }
+    #kycModal img:hover {
+      transform: scale(1.02);
+    }
+    .table-responsive {
+      border-radius: 0.375rem;
+    }
+    @media (max-width: 768px) {
+      #kycModal .modal-dialog {
+        margin: 0.5rem;
+      }
+      #kycModal .col-md-6 {
+        margin-bottom: 1rem;
+      }
+    }
+  </style>
 </head>
 <body>
   <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom sticky-top">
@@ -40,6 +69,7 @@
           <button class="nav-link" id="tab-blog" data-bs-toggle="pill" data-bs-target="#pane-blog" type="button" role="tab">Blog</button>
           <button class="nav-link" id="tab-notifs" data-bs-toggle="pill" data-bs-target="#pane-notifs" type="button" role="tab">Notifications</button>
           <button class="nav-link" id="tab-chats" data-bs-toggle="pill" data-bs-target="#pane-chats" type="button" role="tab">Chats</button>
+          <button class="nav-link position-relative" id="tab-quotations" data-bs-toggle="pill" data-bs-target="#pane-quotations" type="button" role="tab">Quotations <span class="badge bg-warning text-dark ms-1 d-none" id="adminQuoBadge">0</span></button>
           <button class="nav-link" id="tab-contact" data-bs-toggle="pill" data-bs-target="#pane-contact" type="button" role="tab">Contact Messages</button>
         </nav>
       </aside>
@@ -130,7 +160,7 @@
           <table class="table table-sm align-middle">
             <thead>
               <tr>
-                <th>ID</th><th>User</th><th>Status</th><th>Submitted</th><th>Actions</th>
+                <th>ID</th><th>User</th><th>Email</th><th>Status</th><th>Type</th><th>Submitted</th><th>Actions</th>
               </tr>
             </thead>
             <tbody id="kycTbody"></tbody>
@@ -374,6 +404,81 @@
         </div>
       </div>
 
+      <div class="tab-pane fade" id="pane-quotations" role="tabpanel">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <h2 class="h5 m-0">Quotations</h2>
+          <div class="d-flex flex-wrap gap-2 align-items-center">
+            <div class="input-group input-group-sm" style="width:220px;">
+              <span class="input-group-text">Status</span>
+              <select class="form-select" id="adminQuoStatusFilter">
+                <option value="">All</option>
+                <option value="REQUESTED">Requested</option>
+                <option value="REPLIED">Replied</option>
+                <option value="PAID">Paid</option>
+                <option value="CANCELLED">Cancelled</option>
+              </select>
+            </div>
+            <div class="input-group input-group-sm" style="width:190px;">
+              <span class="input-group-text">User ID</span>
+              <input type="number" class="form-control" id="adminQuoUserFilter" placeholder="Any">
+            </div>
+            <button class="btn btn-sm btn-outline-secondary" id="adminQuoRefresh" type="button">Refresh</button>
+          </div>
+        </div>
+        <div class="row g-3" id="adminQuoLayout">
+          <div class="col-xl-4 col-lg-5">
+            <div class="card h-100">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">Requests</span>
+                <span class="badge text-bg-secondary d-none" id="adminQuoCountBadge">0</span>
+              </div>
+              <div class="list-group list-group-flush small" id="adminQuoList" style="max-height:60vh; overflow:auto;">
+                <div class="p-3 text-muted">Loading...</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-xl-8 col-lg-7">
+            <div class="card h-100" id="adminQuoDetailCard" style="min-height:320px;">
+              <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="fw-semibold" id="adminQuoDetailTitle">Select a quotation</div>
+                <div class="d-flex gap-2 align-items-center" id="adminQuoDetailActions" style="display:none;">
+                  <span class="badge rounded-pill text-bg-info" id="adminQuoStatusBadge">–</span>
+                  <button class="btn btn-sm btn-success d-none" id="adminQuoMarkPaidBtn" type="button">Mark Paid</button>
+                  <button class="btn btn-sm btn-outline-danger d-none" id="adminQuoCancelBtn" type="button">Cancel</button>
+                </div>
+              </div>
+              <div class="card-body" id="adminQuoDetailBody">
+                <div class="text-muted small">Choose a request on the left to view and reply.</div>
+              </div>
+              <div class="card-footer" id="adminQuoReplyFooter" style="display:none;">
+                <form id="adminQuoReplyForm" class="row g-2 align-items-end">
+                  <div class="col-sm-3">
+                    <label class="form-label small mb-1">Logistics</label>
+                    <input type="number" step="0.01" min="0" class="form-control form-control-sm" id="adminQuoLogistics">
+                  </div>
+                  <div class="col-sm-3">
+                    <label class="form-label small mb-1">Discount</label>
+                    <input type="number" step="0.01" min="0" class="form-control form-control-sm" id="adminQuoDiscount">
+                  </div>
+                  <div class="col-sm-3">
+                    <label class="form-label small mb-1">Methods</label>
+                    <input type="text" class="form-control form-control-sm" id="adminQuoMethods" placeholder="stripe,paystack,crypto">
+                  </div>
+                  <div class="col-12 col-sm-8">
+                    <label class="form-label small mb-1">Admin Notes</label>
+                    <textarea class="form-control form-control-sm" rows="2" id="adminQuoNotes"></textarea>
+                  </div>
+                  <div class="col-12 col-sm-4 d-grid">
+                    <button class="btn btn-primary btn-sm" type="submit" id="adminQuoReplySubmit">Reply / Update</button>
+                  </div>
+                  <div class="col-12 small text-muted" id="adminQuoReplyStatus"></div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="tab-pane fade" id="pane-contact" role="tabpanel">
         <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
           <div class="d-flex gap-2 align-items-center">
@@ -549,6 +654,10 @@
                     <label class="form-label">Content</label>
                     <textarea class="form-control" id="blogContent" rows="6" required></textarea>
                   </div>
+                  <div>
+                    <label class="form-label">Category <span class="text-muted small">(optional)</span></label>
+                    <input type="text" class="form-control" id="blogCategory" placeholder="e.g. announcements">
+                  </div>
                   <div class="form-check">
                     <input class="form-check-input" type="checkbox" id="blogRequireLogin">
                     <label class="form-check-label" for="blogRequireLogin">Require login to view</label>
@@ -567,9 +676,15 @@
           </div>
           <div class="col-lg-8">
             <div class="card h-100">
-              <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Posts</span>
-                <button class="btn btn-outline-secondary btn-sm" id="refreshBlog">Refresh</button>
+              <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                  <span class="fw-semibold">Posts</span>
+                  <input type="text" class="form-control form-control-sm" style="max-width:180px;" id="blogAdminSearch" placeholder="Search...">
+                  <input type="text" class="form-control form-control-sm" style="max-width:140px;" id="blogAdminCategory" placeholder="Category filter">
+                </div>
+                <div class="ms-auto d-flex gap-2">
+                  <button class="btn btn-outline-secondary btn-sm" id="refreshBlog">Refresh</button>
+                </div>
               </div>
               <div class="card-body">
                 <div id="adminBlogList" class="vstack gap-2"></div>
@@ -582,6 +697,66 @@
       </div>
     </div>
   </main>
+
+  <!-- KYC Documents Modal -->
+  <div class="modal fade" id="kycModal" tabindex="-1" aria-labelledby="kycModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="kycModalLabel">KYC Documents</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <h6>User Information</h6>
+              <div id="kycUserInfo"></div>
+            </div>
+            <div class="col-md-6">
+              <h6>Submission Details</h6>
+              <div id="kycSubmissionInfo"></div>
+            </div>
+          </div>
+          
+          <div class="row mb-3" id="kycNotesSection" style="display: none;">
+            <div class="col-12">
+              <h6>User Notes</h6>
+              <div class="border rounded p-2 bg-light" id="kycNotes"></div>
+            </div>
+          </div>
+
+          <div class="row mb-3" id="kycReviewSection" style="display: none;">
+            <div class="col-12">
+              <h6>Review Notes</h6>
+              <div class="border rounded p-2 bg-light" id="kycReviewNotes"></div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-12">
+              <h6>Documents</h6>
+              <div class="row g-3" id="kycDocuments">
+                <!-- Documents will be loaded here -->
+              </div>
+            </div>
+          </div>
+          
+          <div class="row mt-3" id="kycActionSection">
+            <div class="col-12">
+              <h6>Admin Actions</h6>
+              <div class="d-flex gap-2">
+                <textarea class="form-control" id="kycReviewNotesInput" placeholder="Review notes (optional)" rows="2"></textarea>
+                <div class="d-flex flex-column gap-2">
+                  <button class="btn btn-success" id="kycApproveBtn">Approve</button>
+                  <button class="btn btn-danger" id="kycRejectBtn">Reject</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script type="module" src="/src/js/admin.js"></script>
