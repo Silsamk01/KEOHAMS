@@ -326,6 +326,20 @@ function renderDetailModal(data) {
   
   // Store submission ID for actions
   document.getElementById('kycDetailModal').dataset.submissionId = submission.id;
+
+  // Wire action buttons programmatically (more reliable than inline handlers)
+  const approveBtn = document.getElementById('btnApproveKYC');
+  const rejectBtn = document.getElementById('btnRejectKYC');
+  const resubmitBtn = document.getElementById('btnRequestResubmitKYC');
+  if (approveBtn) {
+    approveBtn.onclick = (e) => { e.preventDefault(); approveKYC(); };
+  }
+  if (rejectBtn) {
+    rejectBtn.onclick = (e) => { e.preventDefault(); rejectKYC(); };
+  }
+  if (resubmitBtn) {
+    resubmitBtn.onclick = (e) => { e.preventDefault(); requestResubmit(); };
+  }
   
   // Audit log
   renderAuditLog(auditLog);
@@ -362,6 +376,8 @@ async function approveKYC() {
   if (!confirm('Approve this KYC submission?')) return;
 
   try {
+    const btn = document.getElementById('btnApproveKYC');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Approving…'; }
     await fetchJSON(`${API_BASE}/kyc/enhanced/admin/${submissionId}/review`, {
       method: 'POST',
       body: JSON.stringify({
@@ -386,6 +402,10 @@ async function approveKYC() {
     }
     alert('❌ Failed to approve: ' + (error.message || 'Unknown error'));
   }
+  finally {
+    const btn = document.getElementById('btnApproveKYC');
+    if (btn) { btn.disabled = false; btn.textContent = 'Approve'; }
+  }
 }
 
 // Reject KYC
@@ -402,6 +422,8 @@ async function rejectKYC() {
   if (!confirm('Reject this KYC submission?')) return;
 
   try {
+    const btn = document.getElementById('btnRejectKYC');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Rejecting…'; }
     await fetchJSON(`${API_BASE}/kyc/enhanced/admin/${submissionId}/review`, {
       method: 'POST',
       body: JSON.stringify({
@@ -426,6 +448,10 @@ async function rejectKYC() {
     }
     alert('❌ Failed to reject: ' + (error.message || 'Unknown error'));
   }
+  finally {
+    const btn = document.getElementById('btnRejectKYC');
+    if (btn) { btn.disabled = false; btn.textContent = 'Reject'; }
+  }
 }
 
 // Request resubmission
@@ -440,6 +466,8 @@ async function requestResubmit() {
   }
 
   try {
+    const btn = document.getElementById('btnRequestResubmitKYC');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending…'; }
     await fetchJSON(`${API_BASE}/kyc/enhanced/admin/${submissionId}/review`, {
       method: 'POST',
       body: JSON.stringify({
@@ -463,6 +491,10 @@ async function requestResubmit() {
       return;
     }
     alert('❌ Failed: ' + (error.message || 'Unknown error'));
+  }
+  finally {
+    const btn = document.getElementById('btnRequestResubmitKYC');
+    if (btn) { btn.disabled = false; btn.textContent = 'Request Resubmit'; }
   }
 }
 

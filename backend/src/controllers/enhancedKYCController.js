@@ -460,15 +460,39 @@ exports.adminReviewKYC = async (req, res) => {
       reviewed_at: db.fn.now()
     });
 
-    // Update verification_states table
+    // Update user_verification_state table (upsert)
     if (action === 'APPROVE') {
-      await db('verification_states')
-        .where({ user_id: submission.user_id })
-        .update({
+      const state = await db('user_verification_state').where({ user_id: submission.user_id }).first();
+      if (state) {
+        await db('user_verification_state').where({ user_id: submission.user_id }).update({
           status: 'KYC_VERIFIED',
+          kyc_submission_id: submission.id,
           kyc_verified_at: db.fn.now(),
           updated_at: db.fn.now()
         });
+      } else {
+        await db('user_verification_state').insert({
+          user_id: submission.user_id,
+          status: 'KYC_VERIFIED',
+          kyc_submission_id: submission.id,
+          kyc_verified_at: db.fn.now(),
+          risk_score: 0,
+          risk_level: 'LOW',
+          manual_lock: false
+        });
+      }
+      // Log a risk event for audit
+      try {
+        const st = await db('user_verification_state').where({ user_id: submission.user_id }).first();
+        await db('risk_events').insert({
+          user_id: submission.user_id,
+          event_type: 'KYC_APPROVED',
+          delta: -10,
+          resulting_score: st?.risk_score ?? 0,
+          resulting_level: st?.risk_level || 'LOW',
+          metadata: JSON.stringify({ submission_id: submission.id, admin_id: adminId })
+        });
+      } catch (_e) { /* non-fatal */ }
     }
 
     // Log audit
