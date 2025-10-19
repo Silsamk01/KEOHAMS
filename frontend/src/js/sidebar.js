@@ -8,13 +8,19 @@ const SIDEBAR_HTML = `
     <span class="d-none d-sm-inline">KEOHAMS</span>
   </a>
   <nav class="nav nav-pills flex-column gap-1" id="dashNav">
-    <a class="nav-link" data-path="/dashboard" data-pane="overview" href="/dashboard">Overview</a>
-    <a class="nav-link" data-path="/shop" href="/shop">Shop</a>
-    <a class="nav-link" data-path="/blog" href="/blog">Blog</a>
-    <a class="nav-link" data-path="/chat" href="/chat">Chat</a>
-    <a class="nav-link" data-path="/dashboard" data-pane="kyc" href="/dashboard?pane=kyc">KYC</a>
-    <a class="nav-link" data-path="/dashboard" data-pane="orders" href="/dashboard?pane=orders">Orders</a>
-  <a class="nav-link d-flex align-items-center justify-content-between" data-path="/dashboard" data-pane="quotations" href="/dashboard?pane=quotations">Quotations <span class="badge rounded-pill bg-warning text-dark ms-2 d-none" id="sbQuoPending">0</span></a>
+    <a class="nav-link" data-path="/dashboard" data-pane="overview" href="/dashboard?pane=overview">Overview</a>
+    <a class="nav-link" data-path="/dashboard" data-pane="shop" data-requires-kyc="true" href="/dashboard?pane=shop">
+      Shop <span class="badge bg-warning text-dark ms-1 d-none" data-kyc-lock>🔒</span>
+    </a>
+    <a class="nav-link" data-path="/dashboard" data-pane="blog" href="/dashboard?pane=blog">Blog</a>
+    <a class="nav-link" data-path="/dashboard" data-pane="chats" href="/dashboard?pane=chats">Chat</a>
+    <a class="nav-link" data-path="/dashboard" data-pane="orders" data-requires-kyc="true" href="/dashboard?pane=orders">
+      Orders <span class="badge bg-warning text-dark ms-1 d-none" data-kyc-lock>🔒</span>
+    </a>
+    <a class="nav-link d-flex align-items-center justify-content-between" data-path="/dashboard" data-pane="quotations" data-requires-kyc="true" href="/dashboard?pane=quotations">
+      <span>Quotations <span class="badge bg-warning text-dark ms-1 d-none" data-kyc-lock>🔒</span></span>
+      <span class="badge rounded-pill bg-warning text-dark ms-2 d-none" id="sbQuoPending">0</span>
+    </a>
     <a class="nav-link" data-path="/dashboard" data-pane="notifications" href="/dashboard?pane=notifications">Notifications</a>
     <a class="nav-link" data-path="/dashboard" data-pane="settings" href="/dashboard?pane=settings">Settings</a>
     <button class="nav-link text-start" type="button" data-theme-toggle style="background:none; border:none;">Dark Mode</button>
@@ -24,16 +30,18 @@ const SIDEBAR_HTML = `
 function setActive(){
   const path = location.pathname.replace(/\/$/, '') || '/';
   const params = new URLSearchParams(location.search);
-  const pane = params.get('pane') || 'overview';
+  let pane = params.get('pane') || 'overview';
+  // Map non-dashboard routes to corresponding panes when linking in other pages
+  if (path === '/shop') pane = 'shop';
+  else if (path === '/blog' || path.startsWith('/blog/')) pane = 'blog';
+  else if (path === '/chat') pane = 'chats';
+  else if (path === '/notifications') pane = 'notifications';
   document.querySelectorAll('#dashNav .nav-link[data-path]').forEach(a=>{
     const target = a.getAttribute('data-path');
     const apane = a.getAttribute('data-pane');
     const isDash = target === '/dashboard';
-    if (!isDash) {
-      if (target === path) a.classList.add('active'); else a.classList.remove('active');
-    } else {
-      if (path === '/dashboard' && (apane||'overview') === pane) a.classList.add('active'); else a.classList.remove('active');
-    }
+    // Only consider dashboard links now; highlight by pane
+    if ((apane||'overview') === pane) a.classList.add('active'); else a.classList.remove('active');
   });
 }
 
@@ -55,6 +63,73 @@ function wireSignOut(){
   });
 }
 
+async function checkKYCAndLockFeatures() {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    const res = await fetch("http://localhost:4000/api/user/profile", {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (!res.ok) return;
+    const data = await res.json();
+
+    const kycStatus = data.user?.kyc?.status;
+    const isApproved = kycStatus === "APPROVED";
+
+    // Get all links that require KYC
+    const protectedLinks = document.querySelectorAll('[data-requires-kyc="true"]');
+
+    protectedLinks.forEach(link => {
+      const lockBadge = link.querySelector('[data-kyc-lock]');
+
+      if (!isApproved) {
+        // Show lock badge
+        if (lockBadge) lockBadge.classList.remove("d-none");
+
+        // Add disabled styling
+        link.classList.add("disabled", "text-muted");
+        link.style.opacity = "0.6";
+        link.style.cursor = "not-allowed";
+
+        // Prevent navigation with highest priority event
+        const blockClick = function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+
+          let message = "🔒 KYC Verification Required";
+          let detail = "Please complete KYC verification to access this feature.";
+
+          if (kycStatus === "PENDING") {
+            detail = "Your KYC submission is pending admin review. You'll get access once approved.";
+          } else if (kycStatus === "REJECTED") {
+            detail = "Your KYC was rejected. Please check your dashboard for details and resubmit.";
+          } else if (!kycStatus || kycStatus === "NOT_SUBMITTED") {
+            detail = "Go to your dashboard and click 'Start KYC Verification' to get started.";
+          }
+
+          alert(`${message}\n\n${detail}`);
+          return false;
+        };
+
+        // Add multiple event listeners to ensure blocking
+        link.addEventListener("click", blockClick, { capture: true });
+        link.addEventListener("mousedown", blockClick, { capture: true });
+      } else {
+        // Hide lock badge for approved users
+        if (lockBadge) lockBadge.classList.add("d-none");
+        link.classList.remove("disabled", "text-muted");
+        link.style.opacity = "1";
+        link.style.cursor = "pointer";
+      }
+    });
+  } catch (err) {
+    console.error("KYC check failed:", err);
+  }
+}
+
 function ensureSidebar(){
   const host = document.querySelector('[data-sidebar]');
   if(!host) return;
@@ -63,6 +138,28 @@ function ensureSidebar(){
     host.dataset.injected = '1';
     setActive();
     wireSignOut();
+    checkKYCAndLockFeatures(); // Enforce KYC restrictions on sidebar
+    // Intercept clicks for dashboard pane links to keep single-page dashboard
+    document.getElementById('dashNav')?.addEventListener('click', (e)=>{
+      const link = e.target.closest('a.nav-link');
+      if (!link) return;
+      const path = link.getAttribute('data-path');
+      const pane = link.getAttribute('data-pane');
+      if (path === '/dashboard') {
+        e.preventDefault();
+        try {
+          if (window.switchPane && pane) {
+            window.switchPane('#pane-' + pane);
+          } else {
+            // Fallback: navigate with query param
+            const url = new URL(location.href);
+            url.pathname = '/dashboard';
+            url.searchParams.set('pane', pane || 'overview');
+            location.href = url.toString();
+          }
+        } catch(_){ /* fallback silently */ }
+      }
+    });
   }
 }
 

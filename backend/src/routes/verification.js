@@ -7,6 +7,5 @@ const ctrl = require('../controllers/verificationController');
 router.use(requireAuth);
 router.get('/status', asyncHandler(ctrl.getStatus));
 router.post('/basic/trigger', asyncHandler(ctrl.triggerBasicCheck));
-router.post('/kyc/submit', asyncHandler(ctrl.submitKyc));
 
 module.exports = router;

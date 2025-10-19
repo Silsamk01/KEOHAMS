@@ -3,6 +3,7 @@ const ctrl = require('../controllers/productController');
 const asyncHandler = require('../utils/asyncHandler');
 const { upload } = require('../middlewares/upload');
 const { requireAuth, requireRole } = require('../middlewares/auth');
+const { requireKYC } = require('../middlewares/requireKYC');
 const { sendMail } = require('../utils/email');
 const db = require('../config/db');
 
@@ -12,8 +13,8 @@ router.post('/', requireAuth, requireRole('ADMIN'), upload.fields([{ name: 'imag
 router.put('/:id', requireAuth, requireRole('ADMIN'), asyncHandler(ctrl.update));
 router.delete('/:id', requireAuth, requireRole('ADMIN'), asyncHandler(ctrl.remove));
 
-// Product inquiry (optional next step implementation)
-router.post('/:id/inquiry', requireAuth, asyncHandler(async (req, res) => {
+// Product inquiry (requires KYC approval)
+router.post('/:id/inquiry', requireAuth, requireKYC, asyncHandler(async (req, res) => {
 	const { id } = req.params;
 	const { message } = req.body;
 	const product = await db('products').where({ id }).first();

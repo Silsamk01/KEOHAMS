@@ -36,9 +36,7 @@ function fileFilter(req, file, cb) {
 
 // Size limits (tune as needed)
 const DEFAULT_MAX = 10 * 1024 * 1024; // 10MB generic
-const KYC_MAX = 50 * 1024 * 1024; // 50MB for video/selfie
 
 const upload = multer({ storage, fileFilter, limits: { fileSize: DEFAULT_MAX } });
-const kycUpload = multer({ storage, fileFilter, limits: { fileSize: KYC_MAX } });
 
-module.exports = { upload, kycUpload };
+module.exports = { upload };

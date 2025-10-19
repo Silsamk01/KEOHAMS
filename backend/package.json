@@ -18,8 +18,10 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@vladmandic/face-api": "^1.7.15",
     "axios": "^1.12.2",
     "bcryptjs": "^3.0.2",
+    "canvas": "^3.2.0",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -36,17 +38,18 @@
     "multer": "^2.0.2",
     "mysql2": "^3.15.1",
     "nodemailer": "^7.0.6",
+    "pino": "^9.3.0",
     "qrcode": "^1.5.4",
     "socket.io": "^4.8.1",
     "speakeasy": "^2.0.0",
+    "tesseract.js": "^6.0.1",
     "uuid": "^13.0.0",
-    "xss-clean": "^0.1.4",
-    "pino": "^9.3.0"
+    "xss-clean": "^0.1.4"
   },
   "devDependencies": {
     "dotenv-cli": "^10.0.0",
-    "nodemon": "^3.1.10",
     "esbuild": "^0.24.0",
+    "nodemon": "^3.1.10",
     "pino-pretty": "^11.2.2"
   }
 }

@@ -2,6 +2,8 @@ const db = require('../config/db');
 const Quotation = require('../models/quotation');
 const Products = require('../models/product'); // assuming product model exists
 const { sendMail } = require('../utils/email');
+const axios = require('axios');
+const crypto = require('crypto');
 
 // Helper to load product pricing snapshot
 async function mapItems(rawItems){
@@ -76,7 +78,29 @@ exports.initiatePayment = async (req,res)=>{
   if(method==='stripe'){
     payload = { provider:'stripe', publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || 'pk_test_dummy', clientSecret: 'cs_test_dummy', amount: q.total_amount };
   } else if(method==='paystack') {
-    payload = { provider:'paystack', publicKey: process.env.PAYSTACK_PUBLIC_KEY || 'pk_test_dummy', reference: 'PAYSTACK_'+Date.now(), amount: q.total_amount };
+    // Initialize real Paystack transaction
+    try {
+      const response = await axios.post('https://api.paystack.co/transaction/initialize', {
+        email: q.user_email,
+        amount: Math.round(q.total_amount * 100), // Paystack expects kobo (for NGN, but assume USD cents equivalent)
+        reference: `QUO-${q.id}-${Date.now()}`,
+        callback_url: `${req.protocol}://${req.get('host')}/dashboard/quotations`,
+        metadata: { quotation_id: q.id, user_id: q.user_id }
+      }, {
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.data.status) {
+        payload = { provider:'paystack', publicKey: process.env.PAYSTACK_PUBLIC_KEY, authorization_url: response.data.data.authorization_url, reference: response.data.data.reference };
+      } else {
+        return res.status(500).json({ message: 'Paystack init failed' });
+      }
+    } catch (e) {
+      console.error('Paystack init error:', e.response?.data || e.message);
+      return res.status(500).json({ message: 'Payment init failed' });
+    }
   } else if(method==='crypto') {
     payload = { provider:'crypto', address: process.env.CRYPTO_PAYMENT_ADDRESS || '0xDUMMY', amount: q.total_amount };
   } else {
@@ -141,3 +165,42 @@ async function maybeEmail(userId, subject, html){
     }
   } catch(e){ /* log quietly */ }
 }
+
+// Paystack webhook
+exports.paystackWebhook = async (req, res) => {
+  const secret = process.env.PAYSTACK_SECRET_KEY;
+  const hash = req.headers['x-paystack-signature'];
+  const body = JSON.stringify(req.body);
+  const expectedHash = require('crypto').createHmac('sha512', secret).update(body).digest('hex');
+  if (hash !== expectedHash) {
+    return res.status(400).send('Invalid signature');
+  }
+
+  const event = req.body;
+  if (event.event === 'charge.success') {
+    const { reference, metadata } = event.data;
+    const quotationId = metadata?.quotation_id;
+    if (quotationId) {
+      try {
+        // Update quotation to FULFILLMENT_PENDING
+        const q = await Quotation.markPaid(quotationId);
+
+        // Send notification to admins
+        const Notifications = require('../models/notification');
+        await Notifications.create({
+          title: 'Quotation Paid',
+          body: `Quotation ${q.reference} has been paid. Ready for fulfillment.`,
+          audience: 'ADMIN',
+          url: `/admin/quotations/${quotationId}`
+        });
+
+        // Email user
+        await maybeEmail(q.user_id, 'Payment Confirmed', `<p>Your payment for quotation <strong>${q.reference}</strong> has been confirmed. We will process your order soon.</p>`);
+      } catch (e) {
+        console.error('Webhook processing error:', e);
+        return res.status(500).send('Processing failed');
+      }
+    }
+  }
+  res.sendStatus(200);
+};

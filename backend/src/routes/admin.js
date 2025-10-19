@@ -11,11 +11,6 @@ router.patch('/users/:id', asyncHandler(ctrl.updateUser));
 router.delete('/users/:id', asyncHandler(ctrl.deleteUser));
 router.post('/users/:id/revoke-tokens', asyncHandler(ctrl.revokeUserTokens));
 
-router.get('/kyc', asyncHandler(ctrl.listKyc));
-router.get('/kyc/:id', asyncHandler(ctrl.getKyc));
-router.post('/kyc/:id/approve', asyncHandler(ctrl.approveKyc));
-router.post('/kyc/:id/reject', asyncHandler(ctrl.rejectKyc));
-
 // profile
 router.get('/profile', asyncHandler(ctrl.getProfile));
 router.patch('/profile', asyncHandler(ctrl.updateProfile));

@@ -83,8 +83,9 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
       submitBtn.disabled = false;
       return;
     }
-    document.getElementById('captchaAnswer').classList.remove('is-invalid');
-    document.getElementById('successAlert').classList.remove('d-none');
+  document.getElementById('captchaAnswer').classList.remove('is-invalid');
+  document.getElementById('successAlert').classList.remove('d-none');
+  try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch(_) { window.scrollTo(0,0); }
     (document.getElementById('registerForm')).reset();
     await loadCaptcha();
   } catch (e) {

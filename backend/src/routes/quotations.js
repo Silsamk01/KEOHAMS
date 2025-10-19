@@ -1,11 +1,15 @@
 const router = require('express').Router();
 const asyncHandler = require('../utils/asyncHandler');
 const { requireAuth, requireRole } = require('../middlewares/auth');
+const { requireKYC } = require('../middlewares/requireKYC');
 const ctrl = require('../controllers/quotationController');
 
-// User quotation endpoints
+// Webhooks (no auth, verify signature)
+router.post('/webhooks/paystack', asyncHandler(ctrl.paystackWebhook));
+
+// User quotation endpoints (requires KYC approval)
 router.use(requireAuth);
-router.post('/', asyncHandler(ctrl.requestQuotation));
+router.post('/', requireKYC, asyncHandler(ctrl.requestQuotation));
 router.get('/mine', asyncHandler(ctrl.listMine));
 router.get('/mine/:id', asyncHandler(ctrl.getMine));
 router.post('/mine/:id/pay', asyncHandler(ctrl.initiatePayment));

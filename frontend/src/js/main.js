@@ -77,7 +77,7 @@ function productCard(p) {
 		<div class="card-body d-flex flex-column">
 			<h5 class="card-title">${p.title}</h5>
 			<p class="card-text small text-muted mb-2">MOQ: ${p.moq ?? 1}</p>
-			<p class="card-text fw-semibold">$${Number(p.price_per_unit).toFixed(2)}</p>
+			<p class="card-text fw-semibold" data-price-usd="${Number(p.price_per_unit)}">$${Number(p.price_per_unit).toFixed(2)}</p>
 			<div class="mt-auto d-grid gap-2">
 				<button class="btn btn-outline-primary btn-sm">Add to Cart</button>
 				<button class="btn btn-primary btn-sm">Request Quote</button>
@@ -158,9 +158,24 @@ function wireEvents() {
 		state.page = 1;
 		hydrateProducts(true);
 	});
-		els.currencySelect?.addEventListener('change', () => {
+		els.currencySelect?.addEventListener('change', async () => {
 			state.currency = els.currencySelect.value;
-			// TODO: call backend currency API when implemented; for now, no-op
+			try {
+				// Convert displayed prices on the fly using backend API
+				const priceEls = document.querySelectorAll('[data-price-usd]');
+				if (priceEls.length) {
+					const resp = await fetch(`${API_BASE}/currency/rates?base=USD`);
+					if (!resp.ok) throw new Error('rate fetch failed');
+					const { data } = await resp.json();
+					const rate = data?.rates?.[state.currency] || 1;
+					priceEls.forEach(el => {
+						const usd = parseFloat(el.getAttribute('data-price-usd') || '0');
+						const v = usd * rate;
+						try { el.textContent = v.toLocaleString(undefined, { style: 'currency', currency: state.currency, minimumFractionDigits: 2 }); }
+						catch(_) { el.textContent = `${state.currency} ${v.toFixed(2)}`; }
+					});
+				}
+			} catch (e) { console.warn('currency switch failed', e); }
 		});
 
 			// Open modals from nav and preload captcha

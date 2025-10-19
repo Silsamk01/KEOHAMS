@@ -10,7 +10,7 @@ async function aqFetch(url, opts={}){ const res = await fetch(url, { ...opts, he
 const aqState = { page:1, pageSize:25, status:'', user_id:'', list:[], total:0, selectedId:null };
 
 function aqFmtMoney(v){ return Number(v||0).toLocaleString(undefined,{ style:'currency', currency:'USD', minimumFractionDigits:2 }); }
-function aqStatusColor(s){ return ({ REQUESTED:'secondary', REPLIED:'warning', PAID:'success', CANCELLED:'dark' })[s]||'secondary'; }
+function aqStatusColor(s){ return ({ REQUESTED:'secondary', REPLIED:'warning', FULFILLMENT_PENDING:'info', PAID:'success', CANCELLED:'dark' })[s]||'secondary'; }
 function aqEscape(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;' }[c])); }
 
 export async function loadAdminQuotations(){
@@ -148,7 +148,7 @@ export function initAdminQuotations(){
 export function updateAdminQuoBadge(){
   try {
     const badge = document.getElementById('adminQuoBadge'); if(!badge) return;
-    const pending = (aqState.list||[]).filter(q=> q.status==='REQUESTED' || q.status==='REPLIED').length;
+    const pending = (aqState.list||[]).filter(q=> q.status==='REQUESTED' || q.status==='REPLIED' || q.status==='FULFILLMENT_PENDING').length;
     if(pending>0){ badge.textContent=String(pending); badge.classList.remove('d-none'); } else { badge.classList.add('d-none'); }
   } catch(_){ }
 }

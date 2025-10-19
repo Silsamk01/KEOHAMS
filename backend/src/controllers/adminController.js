@@ -1,7 +1,6 @@
 const db = require('../config/db');
 const Users = require('../models/user');
 const AdminAudit = require('../models/adminAuditEvent');
-const KYC = require('../models/kyc');
 const bcrypt = require('bcryptjs');
 const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
@@ -13,13 +12,12 @@ exports.stats = async (req, res) => {
   const [u] = await db('users').count({ c: '*' });
   const [p] = await db('products').count({ c: '*' }).catch(() => [{ c: 0 }]);
   const [c] = await db('categories').count({ c: '*' }).catch(() => [{ c: 0 }]);
-  const [k] = await db('kyc_submissions').where({ status: 'PENDING' }).count({ c: '*' }).catch(() => [{ c: 0 }]);
   res.set({
     'Cache-Control': 'no-store, no-cache, must-revalidate, private',
     'Pragma': 'no-cache',
     'Expires': '0'
   });
-  res.json({ users: Number(u.c||0), products: Number(p.c||0), categories: Number(c.c||0), kyc_pending: Number(k.c||0) });
+  res.json({ users: Number(u.c||0), products: Number(p.c||0), categories: Number(c.c||0) });
 };
 
 exports.listUsers = async (req, res) => {
@@ -76,96 +74,6 @@ exports.deleteUser = async (req, res) => {
   await AdminAudit.log({ admin_id: req.user.sub, target_user_id: id, action: 'USER_DELETE', metadata: { soft: false } }).catch(()=>{});
   res.json({ message: 'Deleted' });
 };
-
-exports.listKyc = async (req, res) => {
-  const page = Number(req.query.page || 1);
-  const pageSize = Number(req.query.pageSize || 20);
-  const status = req.query.status;
-  const { data, total } = await KYC.list({ status, page, pageSize });
-  res.json({ data, total });
-};
-
-exports.getKyc = async (req, res) => {
-  const row = await KYC.findById(req.params.id);
-  if (!row) return res.status(404).json({ message: 'Not found' });
-  
-  // Get user information
-  const user = await db('users').where({ id: row.user_id }).select('id', 'name', 'email', 'created_at').first();
-  
-  // Parse and enhance file URLs for admin access
-  let parsedFiles = null;
-  if (row.files) {
-    try {
-      const files = typeof row.files === 'string' ? JSON.parse(row.files) : row.files;
-      console.debug('[adminController] parsed kyc files keys:', Object.keys(files || {}));
-      parsedFiles = {};
-      for (const [key, value] of Object.entries(files)) {
-        if (value && typeof value === 'string') {
-          // Convert public upload URL to secure admin URL
-          const filename = value.replace('/uploads/', '');
-          parsedFiles[key] = {
-            originalUrl: value,
-            secureUrl: `/admin/kyc-files/${filename}`,
-            filename: filename
-          };
-        }
-      }
-    } catch (e) {
-      console.error('Error parsing KYC files:', e);
-    }
-  }
-  
-  res.json({
-    ...row,
-    user,
-    parsedFiles
-  });
-};
-
-exports.approveKyc = async (req, res) => {
-  const id = Number(req.params.id);
-  const reviewer_id = req.user.sub;
-  const notes = req.body.review_notes || null;
-  await KYC.update(id, { status: 'APPROVED', reviewer_id, review_notes: notes, reviewed_at: db.fn.now() });
-  // Fetch submission with user details for email
-  try {
-    const row = await KYC.findById(id);
-    if (row) {
-      const user = await db('users').where({ id: row.user_id }).select('email','name').first();
-      if (user && user.email) {
-        const subject = 'Your KYC has been approved';
-        const html = `<p>Hi ${user.name || 'there'},</p><p>Your KYC submission has been <strong>approved</strong>. You now have full access to all features.</p>${notes?`<p><em>Reviewer notes:</em><br>${escapeHtml(notes)}</p>`:''}<p>Thank you for verifying your account.<br/>KEOHAMS Team</p>`;
-        sendMail({ to: user.email, subject, html }).catch(err=>{ console.error('approveKyc email failed', err); });
-      }
-    }
-  } catch(e){ console.error('approveKyc post-email error', e); }
-  res.json({ message: 'KYC approved' });
-};
-
-exports.rejectKyc = async (req, res) => {
-  const id = Number(req.params.id);
-  const reviewer_id = req.user.sub;
-  const notes = req.body.review_notes || null;
-  await KYC.update(id, { status: 'REJECTED', reviewer_id, review_notes: notes, reviewed_at: db.fn.now() });
-  try {
-    const row = await KYC.findById(id);
-    if (row) {
-      const user = await db('users').where({ id: row.user_id }).select('email','name').first();
-      if (user && user.email) {
-        const subject = 'Your KYC was rejected';
-        const html = `<p>Hi ${user.name || 'there'},</p><p>Your KYC submission was <strong>rejected</strong>.</p>${notes?`<p><em>Reviewer notes:</em><br>${escapeHtml(notes)}</p>`:'<p>No reviewer notes were provided.</p>'}<p>Please revisit the dashboard and resubmit your documents. If you believe this is an error, reply to this email.</p><p>KEOHAMS Team</p>`;
-        sendMail({ to: user.email, subject, html }).catch(err=>{ console.error('rejectKyc email failed', err); });
-      }
-    }
-  } catch(e){ console.error('rejectKyc post-email error', e); }
-  res.json({ message: 'KYC rejected' });
-};
-
-// Basic HTML escape for reviewer notes
-function escapeHtml(str){
-  if(!str) return '';
-  return String(str).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;' }[c]||c));
-}
 
 // Profile endpoints
 exports.getProfile = async (req, res) => {

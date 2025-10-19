@@ -6,6 +6,7 @@
   <title>Dashboard · KEOHAMS</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="/src/css/styles.css" rel="stylesheet" />
+  <link href="/src/css/blog-modern.css" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="/socket.io/socket.io.js"></script>
   <style>
@@ -31,9 +32,10 @@
   <script type="module" src="/src/js/global.js"></script>
   <script type="module" src="/src/js/sidebar.js"></script>
   <script type="module" src="/src/js/dashboard.js"></script>
+  <script type="module" src="/src/js/shop.js"></script>
+  <script type="module" src="/src/js/blog-modern.js"></script>
   <style>
-    #kycGateOverlay { position:fixed; inset:0; background:rgba(255,255,255,.94); z-index:2000; display:none; align-items:center; justify-content:center; flex-direction:column; padding:2rem; text-align:center; }
-    #kycGateOverlay .gate-card { max-width:640px; width:100%; }
+
   </style>
   <script>
     if (!localStorage.getItem('token')) { window.location.href='/?#signin'; }
@@ -41,58 +43,13 @@
   </head>
 <body>
   <div class="container-fluid">
-    <div id="kycGateOverlay" aria-live="polite">
-      <div class="gate-card">
-        <div class="card shadow-sm border-0">
-          <div class="card-body p-4">
-            <h1 class="h4 mb-3">Complete Your KYC</h1>
-            <p class="text-muted mb-4" id="kycGateMsg">Regulatory compliance requires identity verification before you can access dashboard features.</p>
-            <div class="d-grid gap-2">
-              <a href="#" id="kycGoBtn" class="btn btn-primary btn-lg">Start / Continue KYC</a>
-              <button class="btn btn-outline-secondary" id="kycRefreshStatus" type="button">I already submitted – Recheck</button>
-            </div>
-            <div class="small text-muted mt-3" id="kycGateStatusNote"></div>
-          </div>
-        </div>
-      </div>
-    </div>
+
     <div class="row">
-      <aside class="col-12 col-md-3 col-lg-2 sidebar p-3" id="dashSidebar">
-        <a class="navbar-brand fw-bold d-block mb-3 d-flex align-items-center gap-2" href="/">
-          <img src="/keohamlogo.jpg" alt="KEOHAMS" class="brand-logo" />
-          <span class="d-none d-sm-inline">KEOHAMS</span>
-        </a>
-        <nav class="nav nav-pills flex-column gap-1" id="dashNav">
-          <a class="nav-link active" data-target="#pane-overview" href="#">Overview</a>
-          <a class="nav-link" href="/shop">Shop</a>
-          <a class="nav-link" href="/blog">Blog</a>
-          <a class="nav-link" href="/chat" id="navChat">Chat</a>
-          <a class="nav-link" data-target="#pane-kyc" href="#">KYC</a>
-          <a class="nav-link" data-target="#pane-orders" href="#">Orders</a>
-          <a class="nav-link" data-target="#pane-quotations" href="#">Quotations</a>
-          <a class="nav-link" data-target="#pane-notifications" href="#">Notifications</a>
-          <a class="nav-link" data-target="#pane-settings" href="#">Settings</a>
-          <a class="nav-link text-danger" id="dashSignOut" href="#">Sign out</a>
-        </nav>
-      </aside>
+      <aside class="col-12 col-md-3 col-lg-2 sidebar p-3" id="dashSidebar" data-sidebar></aside>
       <main class="col-12 col-md-9 col-lg-10 p-4">
         <div class="d-flex justify-content-between align-items-center mb-3 gap-3">
           <button class="btn btn-outline-secondary" id="dashBurger" aria-label="Toggle menu">☰</button>
-        <script>
-        // Fallback: ensure KYC overlay buttons are wired even if module execution ordering delays binding
-        window.addEventListener('DOMContentLoaded', function(){
-          const go = document.getElementById('kycGoBtn');
-          const ref = document.getElementById('kycRefreshStatus');
-          if (go && !go.__wired) {
-            go.__wired = true;
-            go.addEventListener('click', function(e){ e.preventDefault(); if (window.switchPane) { window.switchPane('#pane-kyc'); } const ov=document.getElementById('kycGateOverlay'); if(ov) ov.style.display='none'; });
-          }
-          if (ref && !ref.__wired) {
-            ref.__wired = true;
-            ref.addEventListener('click', function(e){ e.preventDefault(); if (window.loadKycStatus) window.loadKycStatus(); });
-          }
-        });
-        </script>
+        
           <div class="d-flex align-items-center gap-3 ms-auto">
             <button class="btn btn-sm btn-outline-secondary" data-theme-toggle type="button">Dark Mode</button>
             <a class="text-decoration-none position-relative" href="#" id="dashBellBtn" role="button" aria-label="Notifications" title="Notifications">
@@ -108,7 +65,10 @@
         </div>
         <div id="pane-overview" class="pane">
           <h1 class="h4 mb-1">Welcome, <span id="dashUserName">User</span></h1>
-          <div class="alert" id="kycBanner" role="alert" style="display:none;"></div>
+
+          <!-- KYC Verification Widget -->
+          <div id="kycWidget" class="my-3"></div>
+
           <div class="row g-3 mt-2">
             <div class="col-6 col-md-3">
               <div class="card text-center shadow-hover">
@@ -119,7 +79,7 @@
               </div>
             </div>
             <div class="col-6 col-md-3">
-              <a href="/shop" class="text-decoration-none">
+              <a href="#" class="text-decoration-none" onclick="if(window.switchPane){window.switchPane('#pane-shop'); return false;} location.href='/dashboard?pane=shop';">
                 <div class="card text-center shadow-hover">
                   <div class="card-body">
                     <div class="text-muted">Shop</div>
@@ -129,7 +89,7 @@
               </a>
             </div>
             <div class="col-6 col-md-3">
-              <a href="/blog" class="text-decoration-none">
+              <a href="#" class="text-decoration-none" onclick="if(window.switchPane){window.switchPane('#pane-blog'); return false;} location.href='/dashboard?pane=blog';">
                 <div class="card text-center shadow-hover">
                   <div class="card-body">
                     <div class="text-muted">Blog</div>
@@ -181,6 +141,49 @@
           </div>
         </div>
 
+        <!-- Shop Pane -->
+        <div id="pane-shop" class="pane d-none">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h5 m-0">Shop</h2>
+            <div class="d-flex gap-2 align-items-center" style="max-width: 520px;">
+              <input class="form-control" placeholder="Search products" id="shopSearch" />
+              <button class="btn btn-primary" id="shopSearchBtn">Search</button>
+              <select class="form-select" id="shopSort" style="width:auto;">
+                <option value="">Newest</option>
+                <option value="price_asc">Price: Low to High</option>
+                <option value="price_desc">Price: High to Low</option>
+              </select>
+            </div>
+          </div>
+          <div class="row g-3">
+            <aside class="col-12 col-md-3">
+              <div class="card">
+                <div class="card-header fw-semibold">Categories</div>
+                <div class="list-group list-group-flush" id="shopCategories"></div>
+              </div>
+            </aside>
+            <section class="col-12 col-md-9">
+              <div class="row g-3" id="shopGrid"></div>
+            </section>
+          </div>
+        </div>
+
+        <!-- Blog Pane (private) -->
+        <div id="pane-blog" class="pane d-none">
+          <div class="d-flex justify-content-between align-items-center mb-3 gap-3 blog-toolbar">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <h2 class="h5 m-0 text-gradient">Blog</h2>
+              <div class="position-relative">
+                <input id="blogSearch" type="search" class="form-control form-control-sm" placeholder="Search... (client-side)" aria-label="Search posts" />
+              </div>
+            </div>
+          </div>
+          <div id="postGrid" class="blog-grid" aria-live="polite"></div>
+          <div id="authRequiredNotice" class="alert alert-warning d-none mt-3">Please sign in to view the authenticated blog. Redirecting...</div>
+          <div id="emptyState" class="blog-empty d-none">No posts match your search.</div>
+          <div id="infiniteSentinel" class="infinite-sentinel"></div>
+        </div>
+
         <div id="pane-chats" class="pane d-none">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h2 class="h5 m-0">Your Chats</h2>
@@ -201,41 +204,7 @@
             </div>
           </div>
         </div>
-        <div id="pane-kyc" class="pane d-none">
-          <h2 class="h5 mb-3">KYC Verification</h2>
-          <div id="kycStatus" class="mb-3"></div>
-          <form id="kycForm" class="vstack gap-3" enctype="multipart/form-data">
-            <div>
-              <label class="form-label">Portrait Photo</label>
-              <div class="d-flex gap-2">
-                <input type="file" class="form-control" id="kycPortrait" accept="image/*" capture="user" required />
-                <button class="btn btn-outline-secondary" type="button" id="btnUseCameraPhoto">Use Camera</button>
-              </div>
-            </div>
-            <div>
-              <label class="form-label">Selfie Video</label>
-              <div class="d-flex gap-2">
-                <input type="file" class="form-control" id="kycSelfieVideo" accept="video/*" capture="user" required />
-                <button class="btn btn-outline-secondary" type="button" id="btnUseCameraVideo">Use Camera</button>
-              </div>
-            </div>
-            <div class="row g-2">
-              <div class="col-md-6">
-                <label class="form-label">ID Front</label>
-                <input type="file" class="form-control" id="kycIdFront" accept="image/*" required />
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">ID Back (optional)</label>
-                <input type="file" class="form-control" id="kycIdBack" accept="image/*" />
-              </div>
-            </div>
-            <div>
-              <label class="form-label">Notes (optional)</label>
-              <textarea id="kycNotes" class="form-control" rows="3"></textarea>
-            </div>
-            <button class="btn btn-primary" type="submit">Submit KYC</button>
-          </form>
-        </div>
+
         <div id="pane-orders" class="pane d-none">
           <h2 class="h5">Orders</h2>
           <p class="text-muted">Coming soon.</p>
@@ -443,6 +412,26 @@
     </div>
   </div>
 
+  <!-- Inquiry Modal (used by Shop pane when chat is unavailable) -->
+  <div class="modal fade" id="inquiryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Product inquiry</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-2"><strong id="inqTitle"></strong></div>
+          <textarea class="form-control" rows="4" placeholder="Write your question" id="inqMessage"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary" id="sendInquiryBtn">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Photo Capture Modal -->
   <div class="modal fade" id="photoCaptureModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -452,7 +441,7 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body text-center">
-          <video id="photoPreview" autoplay playsinline style="max-width:100%; border-radius:8px; background:#000"></video>
+          <video id="photoPreview" autoplay playsinline muted style="max-width:100%; border-radius:8px; background:#000; transform: scaleX(-1);"></video>
           <div class="small text-muted mt-2">Align your face in the frame and tap Capture.</div>
         </div>
         <div class="modal-footer">
@@ -483,5 +472,31 @@
       </div>
     </div>
   </div>
+
+  <!-- Camera Permission Prompt Modal -->
+  <div class="modal fade" id="camPermissionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Allow Camera Access</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="camPermText" class="mb-2">
+            We need access to your camera to capture your portrait. When you click Continue, your browser will ask you to grant access.
+          </div>
+          <ul class="small text-muted mb-0 ps-3">
+            <li>For selfie video, your microphone will also be requested.</li>
+            <li>If you previously blocked permissions, please enable camera (and microphone) access in your browser's site settings for this site.</li>
+          </ul>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary" id="camPermContinue" type="button">Continue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="/src/js/kyc-widget.js"></script>
  </body>
  </html>

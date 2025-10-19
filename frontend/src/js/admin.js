@@ -8,7 +8,6 @@ function authHeaders() {
 
 async function fetchJSON(url, opts={}) {
   const res = await fetch(url, { ...opts, headers: { 'Content-Type': 'application/json', ...(opts.headers||{}), ...authHeaders() } });
-  if (res.status === 451) { if (typeof triggerKycRequired === 'function') triggerKycRequired(); throw new Error('KYC required'); }
   if (!res.ok) throw new Error((await res.text()) || `HTTP ${res.status}`);
   return res.json();
 }
@@ -30,7 +29,6 @@ async function loadStats() {
     document.getElementById('statUsers').textContent = s.users;
     document.getElementById('statProducts').textContent = s.products;
     document.getElementById('statCategories').textContent = s.categories;
-    document.getElementById('statKyc').textContent = s.kyc_pending;
   } catch (e) {
     console.error('stats failed', e);
   }
@@ -122,216 +120,76 @@ function wireUserActions() {
   });
 }
 
-// KYC
-const kycState = { page: 1, pageSize: 10, status: '' };
-async function loadKyc() {
+
+
+
+
+// ===== Verification State Panel =====
+async function loadAndWireVerificationPanel(userId){
+  if (!userId) return;
+  // Load status snapshot
   try {
-    const params = new URLSearchParams({ page: String(kycState.page), pageSize: String(kycState.pageSize) });
-    if (kycState.status) params.set('status', kycState.status);
-    const { data, total } = await fetchJSON(`${API_BASE}/admin/kyc?${params}`);
-    const tbody = document.getElementById('kycTbody');
-    tbody.innerHTML = '';
-    for (const r of data) {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${r.id}</td>
-        <td>${r.user_id}</td>
-        <td class="text-truncate" style="max-width: 200px;" title="${r.user_email || 'N/A'}">${r.user_email || 'N/A'}</td>
-        <td><span class="badge ${badgeClass(r.status)}">${r.status}</span></td>
-        <td>${r.type || 'ID'}</td>
-        <td>${new Date(r.submitted_at || r.created_at).toLocaleString()}</td>
-        <td>
-          <div class="btn-group btn-group-sm">
-            <button class="btn btn-outline-primary" data-act="view" data-id="${r.id}">View</button>
-            ${r.status === 'PENDING' ? `
-              <button class="btn btn-success" data-act="approve" data-id="${r.id}">Approve</button>
-              <button class="btn btn-danger" data-act="reject" data-id="${r.id}">Reject</button>
-            ` : ''}
-          </div>
-        </td>`;
-      tbody.appendChild(tr);
-    }
-    document.getElementById('kycTotal').textContent = `Total: ${total}`;
-    wireKycActions();
-  } catch (e) { console.error('kyc failed', e); }
-}
+    const state = await fetchJSON(`${API_BASE}/verification/status`, { method: 'GET' });
+    // Note: endpoint returns current user's state; we need admin view of target user.
+  } catch(_){ }
+  // Admin endpoints for target user
+  try {
+    const panel = {
+      status: document.getElementById('verStateStatus'),
+      risk: document.getElementById('verStateRisk'),
+      riskLevel: document.getElementById('verStateRiskLevel'),
+      lock: document.getElementById('verStateLock'),
+      meta: document.getElementById('verStateMeta'),
+      eventsBody: document.getElementById('verStateEvents'),
+      lockBtn: document.getElementById('verLockBtn'),
+      unlockBtn: document.getElementById('verUnlockBtn'),
+      adjustBtn: document.getElementById('verAdjustBtn'),
+      delta: document.getElementById('verScoreDelta')
+    };
 
-function badgeClass(status) {
-  switch(status) {
-    case 'APPROVED': return 'text-bg-success';
-    case 'REJECTED': return 'text-bg-danger';
-    default: return 'text-bg-warning';
-  }
-}
-
-function wireKycActions() {
-  document.querySelectorAll('#kycTbody [data-act]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const id = btn.getAttribute('data-id');
-      const act = btn.getAttribute('data-act');
-      
-      if (act === 'view') {
-        await showKycModal(id);
-        return;
-      }
-      
-      const endpoint = act === 'approve' ? 'approve' : 'reject';
+    async function refresh(){
       try {
-        await fetchJSON(`${API_BASE}/admin/kyc/${id}/${endpoint}`, { method: 'POST', body: JSON.stringify({}) });
-        await loadKyc();
-      } catch (e) { alert(e.message || 'Action failed'); }
+        const s = await fetchJSON(`${API_BASE}/admin/verification/states/${userId}`);
+        const st = s?.state || {};
+        panel.status.textContent = st.status || '—';
+        panel.status.className = `badge ${st.status==='REJECTED'?'text-bg-danger':st.status==='LOCKED'?'text-bg-dark':'text-bg-secondary'}`;
+        panel.risk.textContent = typeof st.risk_score === 'number' ? st.risk_score : '—';
+        panel.riskLevel.textContent = st.risk_level || '—';
+        panel.lock.textContent = st.manual_lock ? 'Locked' : 'Unlocked';
+        panel.meta.textContent = `Updated: ${st.updated_at? new Date(st.updated_at).toLocaleString(): '—'}`;
+
+        // Events
+        try {
+          const ev = await fetchJSON(`${API_BASE}/admin/verification/state-events/${userId}?page=1&pageSize=10`);
+          panel.eventsBody.innerHTML = '';
+          (ev?.data||[]).forEach(row=>{
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td class="small">${new Date(row.created_at).toLocaleString()}</td><td class="small">${row.from_status||'—'}</td><td class="small">${row.to_status||'—'}</td>`;
+            panel.eventsBody.appendChild(tr);
+          });
+          if (!panel.eventsBody.children.length) {
+            panel.eventsBody.innerHTML = '<tr><td colspan="3" class="small text-muted">No recent events.</td></tr>';
+          }
+        } catch(_){ panel.eventsBody.innerHTML = '<tr><td colspan="3" class="small text-muted">Failed to load events</td></tr>'; }
+      } catch(_){ /* ignore */ }
+    }
+
+    panel.lockBtn?.addEventListener('click', async ()=>{
+      const reason = prompt('Lock reason (optional):') || '';
+      try { await fetchJSON(`${API_BASE}/admin/verification/lock/${userId}`, { method: 'POST', body: JSON.stringify({ reason }) }); await refresh(); } catch(e){ alert(e.message||'Lock failed'); }
     });
-  });
-}
+    panel.unlockBtn?.addEventListener('click', async ()=>{
+      try { await fetchJSON(`${API_BASE}/admin/verification/unlock/${userId}`, { method: 'POST', body: JSON.stringify({}) }); await refresh(); } catch(e){ alert(e.message||'Unlock failed'); }
+    });
+    panel.adjustBtn?.addEventListener('click', async ()=>{
+      const delta = Number(panel.delta?.value || 0);
+      if (!delta) { alert('Enter non-zero delta'); return; }
+      const reason = prompt('Reason (optional):') || '';
+      try { await fetchJSON(`${API_BASE}/admin/verification/score/${userId}/adjust`, { method: 'POST', body: JSON.stringify({ delta, reason }) }); panel.delta.value=''; await refresh(); } catch(e){ alert(e.message||'Adjust failed'); }
+    });
 
-async function showKycModal(kycId) {
-  try {
-    // disable modal action buttons until content loads
-    document.getElementById('kycApproveBtn').disabled = true;
-    document.getElementById('kycRejectBtn').disabled = true;
-    const kycData = await fetchJSON(`${API_BASE}/admin/kyc/${kycId}`);
-    
-    // Populate user info
-    document.getElementById('kycUserInfo').innerHTML = `
-      <div><strong>ID:</strong> ${kycData.user?.id || 'N/A'}</div>
-      <div><strong>Name:</strong> ${kycData.user?.name || 'N/A'}</div>
-      <div><strong>Email:</strong> ${kycData.user?.email || 'N/A'}</div>
-      <div><strong>Joined:</strong> ${kycData.user?.created_at ? new Date(kycData.user.created_at).toLocaleString() : 'N/A'}</div>
-    `;
-    
-    // Populate submission info
-    document.getElementById('kycSubmissionInfo').innerHTML = `
-      <div><strong>Submission ID:</strong> ${kycData.id}</div>
-      <div><strong>Type:</strong> ${kycData.type || 'ID'}</div>
-      <div><strong>Status:</strong> <span class="badge ${badgeClass(kycData.status)}">${kycData.status}</span></div>
-      <div><strong>Submitted:</strong> ${new Date(kycData.submitted_at || kycData.created_at).toLocaleString()}</div>
-      ${kycData.reviewed_at ? `<div><strong>Reviewed:</strong> ${new Date(kycData.reviewed_at).toLocaleString()}</div>` : ''}
-    `;
-    
-    // Show/hide and populate notes
-    const notesSection = document.getElementById('kycNotesSection');
-    const notesDiv = document.getElementById('kycNotes');
-    if (kycData.notes && kycData.notes.trim()) {
-      notesDiv.textContent = kycData.notes;
-      notesSection.style.display = 'block';
-    } else {
-      notesSection.style.display = 'none';
-    }
-    
-    // Show/hide and populate review notes
-    const reviewSection = document.getElementById('kycReviewSection');
-    const reviewDiv = document.getElementById('kycReviewNotes');
-    if (kycData.review_notes && kycData.review_notes.trim()) {
-      reviewDiv.textContent = kycData.review_notes;
-      reviewSection.style.display = 'block';
-    } else {
-      reviewSection.style.display = 'none';
-    }
-    
-    // Populate documents
-    const documentsDiv = document.getElementById('kycDocuments');
-    documentsDiv.innerHTML = '';
-    
-    if (kycData.parsedFiles && Object.keys(kycData.parsedFiles).length > 0) {
-      for (const [docType, fileData] of Object.entries(kycData.parsedFiles)) {
-        const docTypeLabel = docType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-        const col = document.createElement('div');
-        col.className = 'col-md-6 col-lg-4';
-        
-  const isVideo = fileData.filename && (fileData.filename.includes('.mp4') || fileData.filename.includes('.mov') || fileData.filename.includes('.webm'));
-  const isImage = fileData.filename && (fileData.filename.includes('.jpg') || fileData.filename.includes('.jpeg') || fileData.filename.includes('.png') || fileData.filename.includes('.webp') || fileData.filename.includes('.gif'));
-  const isPdf = fileData.filename && fileData.filename.includes('.pdf');
-  // Prefer original public URL for in-browser rendering (img/video) because browser does not send Authorization header on resource loads.
-  const mediaUrl = fileData.originalUrl || fileData.secureUrl;
-        
-        col.innerHTML = `
-          <div class="card h-100">
-            <div class="card-header">
-              <small class="text-muted">${docTypeLabel}</small>
-            </div>
-            <div class="card-body p-2">
-              ${isImage ? `
-                <img src="${mediaUrl}" class="img-fluid rounded" alt="${docTypeLabel}" 
-                     style="max-height: 200px; width: 100%; object-fit: contain; cursor: pointer;"
-                     onclick="openImageModal('${mediaUrl}', '${docTypeLabel}')">
-              ` : isVideo ? `
-                <video controls class="w-100" style="max-height: 200px;">
-                  <source src="${mediaUrl}" type="video/mp4">
-                  Your browser does not support video playback.
-                </video>
-              ` : isPdf ? `
-                <div class="text-center">
-                  <i class="fas fa-file-pdf fa-3x text-danger mb-2"></i>
-                  <div><a href="${fileData.originalUrl || fileData.secureUrl}" target="_blank" class="btn btn-sm btn-outline-primary">Open PDF</a></div>
-                </div>
-              ` : `
-                <div class="text-center">
-                  <i class="fas fa-file fa-2x text-secondary mb-2"></i>
-                  <div><a href="${fileData.originalUrl || fileData.secureUrl}" target="_blank" class="btn btn-sm btn-outline-primary">Download</a></div>
-                </div>
-              `}
-            </div>
-          </div>
-        `;
-        documentsDiv.appendChild(col);
-      }
-    } else {
-      documentsDiv.innerHTML = '<div class="col-12"><div class="alert alert-info">No documents found.</div></div>';
-    }
-    
-    // Show/hide action section based on status
-    const actionSection = document.getElementById('kycActionSection');
-    if (kycData.status === 'PENDING') {
-      actionSection.style.display = 'block';
-      wireKycModalActions(kycId);
-      // enable buttons now that documents are rendered
-      document.getElementById('kycApproveBtn').disabled = false;
-      document.getElementById('kycRejectBtn').disabled = false;
-    } else {
-      actionSection.style.display = 'none';
-    }
-    
-    // Show the modal
-    const modal = new bootstrap.Modal(document.getElementById('kycModal'));
-    modal.show();
-  } catch (e) {
-    console.error('Failed to load KYC details:', e);
-    alert('Failed to load KYC details: ' + e.message);
-  }
-}
-
-function wireKycModalActions(kycId) {
-  document.getElementById('kycApproveBtn').onclick = async () => {
-    const reviewNotes = document.getElementById('kycReviewNotesInput').value.trim();
-    try {
-      await fetchJSON(`${API_BASE}/admin/kyc/${kycId}/approve`, { 
-        method: 'POST', 
-        body: JSON.stringify({ review_notes: reviewNotes }) 
-      });
-      bootstrap.Modal.getInstance(document.getElementById('kycModal')).hide();
-      await loadKyc();
-    } catch (e) {
-      alert('Approval failed: ' + e.message);
-    }
-  };
-  
-  document.getElementById('kycRejectBtn').onclick = async () => {
-    const reviewNotes = document.getElementById('kycReviewNotesInput').value.trim();
-    if (!reviewNotes) {
-      alert('Please provide review notes for rejection.');
-      return;
-    }
-    try {
-      await fetchJSON(`${API_BASE}/admin/kyc/${kycId}/reject`, { 
-        method: 'POST', 
-        body: JSON.stringify({ review_notes: reviewNotes }) 
-      });
-      bootstrap.Modal.getInstance(document.getElementById('kycModal')).hide();
-      await loadKyc();
-    } catch (e) {
-      alert('Rejection failed: ' + e.message);
-    }
-  };
+    await refresh();
+  } catch(_){ }
 }
 
 function openImageModal(src, title) {
@@ -373,11 +231,6 @@ function wireNav() {
   document.getElementById('usersNext').addEventListener('click', ()=>{ usersState.page+=1; loadUsers(); });
   document.getElementById('usersSearch').addEventListener('input', (e)=>{ usersState.q=e.target.value.trim(); usersState.page=1; loadUsers(); });
 
-  document.getElementById('refreshKyc').addEventListener('click', ()=>{ kycState.page=1; loadKyc(); });
-  document.getElementById('kycPrev').addEventListener('click', ()=>{ kycState.page=Math.max(1, kycState.page-1); loadKyc(); });
-  document.getElementById('kycNext').addEventListener('click', ()=>{ kycState.page+=1; loadKyc(); });
-  document.getElementById('kycStatus').addEventListener('change', (e)=>{ kycState.status = e.target.value; kycState.page=1; loadKyc(); });
-
   document.getElementById('adminSignOut').addEventListener('click', (e)=>{ e.preventDefault(); localStorage.removeItem('token'); window.location.href='/'; });
 }
 
@@ -386,8 +239,9 @@ function wireNav() {
   wireNav();
   initSidebarToggle();
   loadStats();
+  // Poll stats every 60 seconds
+  setInterval(loadStats, 60000);
   loadUsers();
-  loadKyc();
   // Catalog initializers
   loadCategoriesUI();
   loadProductsUI();
@@ -973,7 +827,6 @@ let blogState = { q:'', category:'', page:1, pageSize:50 };
 
 async function blogFetch(url, opts={}){
   const res = await fetch(url, { ...opts, headers: { 'Content-Type':'application/json', ...(opts.headers||{}), ...authHeaders() } });
-  if (res.status === 451) { if (typeof triggerKycRequired === 'function') triggerKycRequired(); throw new Error('KYC required'); }
   if (!res.ok) throw new Error((await res.text()) || 'Request failed');
   try { return await res.json(); } catch { return {}; }
 }

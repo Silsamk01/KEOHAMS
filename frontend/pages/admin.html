@@ -9,31 +9,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <style>
-    #kycModal .modal-dialog {
-      max-width: 90vw;
-    }
-    #kycModal .card {
-      transition: transform 0.2s;
-    }
-    #kycModal .card:hover {
-      transform: translateY(-2px);
-    }
-    #kycModal img {
-      transition: transform 0.2s;
-    }
-    #kycModal img:hover {
-      transform: scale(1.02);
-    }
     .table-responsive {
       border-radius: 0.375rem;
-    }
-    @media (max-width: 768px) {
-      #kycModal .modal-dialog {
-        margin: 0.5rem;
-      }
-      #kycModal .col-md-6 {
-        margin-bottom: 1rem;
-      }
     }
   </style>
 </head>
@@ -61,7 +38,9 @@
         <nav class="nav gap-1" id="adminTabs" role="tablist">
           <button class="nav-link active" id="tab-dashboard" data-bs-toggle="pill" data-bs-target="#pane-dashboard" type="button" role="tab">Dashboard</button>
           <button class="nav-link" id="tab-users" data-bs-toggle="pill" data-bs-target="#pane-users" type="button" role="tab">Users</button>
-          <button class="nav-link" id="tab-kyc" data-bs-toggle="pill" data-bs-target="#pane-kyc" type="button" role="tab">KYC</button>
+          <button class="nav-link position-relative" id="tab-kyc-review" data-bs-toggle="pill" data-bs-target="#pane-kyc-review" type="button" role="tab">
+            KYC Review <span class="badge bg-danger ms-1" id="kycPendingBadge" style="display:none;">0</span>
+          </button>
           <button class="nav-link" id="tab-categories" data-bs-toggle="pill" data-bs-target="#pane-categories" type="button" role="tab">Categories</button>
           <button class="nav-link" id="tab-products" data-bs-toggle="pill" data-bs-target="#pane-products" type="button" role="tab">Products</button>
           <button class="nav-link" id="tab-pending" data-bs-toggle="pill" data-bs-target="#pane-pending" type="button" role="tab">Pending Registrations</button>
@@ -101,14 +80,7 @@
               </div>
             </div>
           </div>
-          <div class="col-md-3">
-            <div class="card text-center">
-              <div class="card-body">
-                <div class="text-muted">KYC Pending</div>
-                <div class="display-6" id="statKyc">–</div>
-              </div>
-            </div>
-          </div>
+
         </div>
       </div>
 
@@ -141,36 +113,49 @@
         </div>
       </div>
 
-      <div class="tab-pane fade" id="pane-kyc" role="tabpanel">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <div class="d-flex gap-2 align-items-center">
-            <label class="form-label m-0">Status</label>
-            <select id="kycStatus" class="form-select form-select-sm" style="width:auto;">
-              <option value="">All</option>
-              <option value="PENDING">Pending</option>
-              <option value="APPROVED">Approved</option>
-              <option value="REJECTED">Rejected</option>
-            </select>
+      <!-- KYC Review Tab Pane -->
+      <div class="tab-pane fade" id="pane-kyc-review" role="tabpanel">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">KYC Submissions Review</h5>
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-secondary" id="kycFilterAll">All</button>
+              <button class="btn btn-outline-warning active" id="kycFilterPending">Pending</button>
+              <button class="btn btn-outline-success" id="kycFilterApproved">Approved</button>
+              <button class="btn btn-outline-danger" id="kycFilterRejected">Rejected</button>
+            </div>
           </div>
-          <div>
-            <button class="btn btn-outline-secondary btn-sm" id="refreshKyc">Refresh</button>
-          </div>
-        </div>
-        <div class="table-responsive">
-          <table class="table table-sm align-middle">
-            <thead>
-              <tr>
-                <th>ID</th><th>User</th><th>Email</th><th>Status</th><th>Type</th><th>Submitted</th><th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="kycTbody"></tbody>
-          </table>
-        </div>
-        <div class="d-flex justify-content-between align-items-center">
-          <div class="small text-muted" id="kycTotal">–</div>
-          <div class="btn-group">
-            <button class="btn btn-outline-secondary btn-sm" id="kycPrev">Prev</button>
-            <button class="btn btn-outline-secondary btn-sm" id="kycNext">Next</button>
+          <div class="card-body">
+            <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+              <span class="badge text-bg-secondary">Total: <span id="statTotal">0</span></span>
+              <span class="badge text-bg-warning text-dark">Pending: <span id="statPending">0</span></span>
+              <span class="badge text-bg-success">Approved: <span id="statApproved">0</span></span>
+              <span class="badge text-bg-danger">Rejected: <span id="statRejected">0</span></span>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>User</th>
+                    <th>Submitted</th>
+                    <th>Status</th>
+                    <th>Auto Decision</th>
+                    <th>Similarity</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="kycTableBody">
+                  <tr>
+                    <td colspan="7" class="text-center text-muted">
+                      <div class="spinner-border spinner-border-sm me-2"></div>
+                      Loading submissions...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div id="pagination" class="mt-3"></div>
           </div>
         </div>
       </div>
@@ -698,67 +683,91 @@
     </div>
   </main>
 
-  <!-- KYC Documents Modal -->
-  <div class="modal fade" id="kycModal" tabindex="-1" aria-labelledby="kycModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- KYC Detail Modal -->
+  <div class="modal fade" id="kycDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="kycModalLabel">KYC Documents</h5>
+          <h5 class="modal-title">KYC Submission Detail</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <h6>User Information</h6>
-              <div id="kycUserInfo"></div>
-            </div>
-            <div class="col-md-6">
-              <h6>Submission Details</h6>
-              <div id="kycSubmissionInfo"></div>
-            </div>
-          </div>
-          
-          <div class="row mb-3" id="kycNotesSection" style="display: none;">
-            <div class="col-12">
-              <h6>User Notes</h6>
-              <div class="border rounded p-2 bg-light" id="kycNotes"></div>
-            </div>
-          </div>
-
-          <div class="row mb-3" id="kycReviewSection" style="display: none;">
-            <div class="col-12">
-              <h6>Review Notes</h6>
-              <div class="border rounded p-2 bg-light" id="kycReviewNotes"></div>
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="col-12">
-              <h6>Documents</h6>
-              <div class="row g-3" id="kycDocuments">
-                <!-- Documents will be loaded here -->
+          <div class="row g-3">
+            <div class="col-md-4">
+              <div class="card h-100">
+                <div class="card-header">User Info</div>
+                <div class="card-body">
+                  <div><strong>Name:</strong> <span id="detailUserName">–</span></div>
+                  <div><strong>Email:</strong> <span id="detailUserEmail">–</span></div>
+                  <div><strong>ID Type:</strong> <span id="detailIDType">–</span></div>
+                  <div><strong>ID Number:</strong> <span id="detailIDNumber">–</span></div>
+                  <div><strong>Address:</strong> <span id="detailAddress">–</span></div>
+                </div>
               </div>
             </div>
-          </div>
-          
-          <div class="row mt-3" id="kycActionSection">
+            <div class="col-md-5">
+              <div class="card h-100">
+                <div class="card-header">Documents</div>
+                <div class="card-body vstack gap-2">
+                  <div>
+                    <div class="small text-muted">Government ID</div>
+                    <img id="detailIDImage" alt="ID Document" class="img-fluid rounded border" />
+                  </div>
+                  <div>
+                    <div class="small text-muted">Selfie</div>
+                    <img id="detailSelfieImage" alt="Selfie" class="img-fluid rounded border" />
+                  </div>
+                  <div>
+                    <div class="small text-muted">Address Proof</div>
+                    <img id="detailAddressImage" alt="Address Proof" class="img-fluid rounded border" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card h-100">
+                <div class="card-header">Automations</div>
+                <div class="card-body">
+                  <div><strong>Face Score:</strong> <span id="detailFaceScore">–</span></div>
+                  <div><strong>Liveness:</strong> <span id="detailLiveness">–</span></div>
+                  <div class="mt-2">
+                    <div class="small text-muted">OCR Extracted Fields</div>
+                    <pre class="small" id="detailOCRData" style="max-height:180px; overflow:auto; background:#f8f9fa; padding:.5rem; border-radius:.25rem;">–</pre>
+                  </div>
+                  <div class="mt-2">
+                    <label class="form-label">Admin Remarks</label>
+                    <textarea id="adminRemarks" class="form-control" rows="3" placeholder="Notes, reasons, or resubmission instructions..."></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div class="col-12">
-              <h6>Admin Actions</h6>
-              <div class="d-flex gap-2">
-                <textarea class="form-control" id="kycReviewNotesInput" placeholder="Review notes (optional)" rows="2"></textarea>
-                <div class="d-flex flex-column gap-2">
-                  <button class="btn btn-success" id="kycApproveBtn">Approve</button>
-                  <button class="btn btn-danger" id="kycRejectBtn">Reject</button>
+              <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <span>Audit Log</span>
+                  <div class="btn-group btn-group-sm">
+                    <button class="btn btn-success" onclick="approveKYC()">Approve</button>
+                    <button class="btn btn-danger" onclick="rejectKYC()">Reject</button>
+                    <button class="btn btn-outline-warning" onclick="requestResubmit()">Request Resubmit</button>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <div id="auditLogContainer" class="small"></div>
                 </div>
               </div>
             </div>
           </div>
         </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/src/js/admin-kyc-review.js"></script>
   <script type="module" src="/src/js/admin.js"></script>
 </body>
 </html>

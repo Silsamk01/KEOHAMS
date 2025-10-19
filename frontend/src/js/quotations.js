@@ -23,7 +23,7 @@ let qState = {
 
 function qFormatMoney(v){ if(v==null) return '—'; return Number(v).toLocaleString(undefined,{ style:'currency', currency:'USD', minimumFractionDigits:2 }); }
 function qFormatDate(d){ try { return new Date(d).toLocaleString(); } catch(_) { return d||'—'; } }
-function qStatusColor(s){ return ({ REQUESTED:'secondary', REPLIED:'warning', PAID:'success', CANCELLED:'dark' })[s]||'secondary'; }
+function qStatusColor(s){ return ({ REQUESTED:'secondary', REPLIED:'warning', FULFILLMENT_PENDING:'info', PAID:'success', CANCELLED:'dark' })[s]||'secondary'; }
 
 export async function loadQuotations(force=false){
   const listEl = document.getElementById('quoList'); if(!listEl) return;
@@ -158,12 +158,18 @@ async function initiatePayment(id, method){
   const detailEl = document.getElementById('quoDetailBody');
   try {
     const resp = await qFetchJSON(`${Q_API}/mine/${id}/pay`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ method }) });
-    // Placeholder: just show payload for now
-    const pre = escapeHtml(JSON.stringify(resp.payload||resp, null, 2));
-    const box = document.createElement('div');
-    box.className='alert alert-info mt-3';
-    box.innerHTML = `<strong>Payment Initiated:</strong><pre class="small mt-2 mb-0" style="white-space:pre-wrap;">${pre}</pre>`;
-    detailEl.appendChild(box);
+    const payload = resp.payload;
+    if (payload.provider === 'paystack' && payload.authorization_url) {
+      // Redirect to Paystack payment page
+      window.location.href = payload.authorization_url;
+    } else {
+      // For other methods, show payload
+      const pre = escapeHtml(JSON.stringify(payload, null, 2));
+      const box = document.createElement('div');
+      box.className='alert alert-info mt-3';
+      box.innerHTML = `<strong>Payment Initiated:</strong><pre class="small mt-2 mb-0" style="white-space:pre-wrap;">${pre}</pre>`;
+      detailEl.appendChild(box);
+    }
   } catch(e){
     alert(e.message||'Payment init failed');
   }

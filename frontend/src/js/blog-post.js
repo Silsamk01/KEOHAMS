@@ -70,7 +70,7 @@ function renderContent(md){
 }
 
 function escapeHtml(str){
-  return (str||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','<':'&lt;'}[c]||c));
+  return (str||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]||c));
 }
 
 function setupShare(post){

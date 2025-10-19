@@ -22,7 +22,34 @@ async function generateRecoveryCodes(userId, count = 8) {
 exports.getProfile = async (req, res) => {
   const user = await Users.findById(req.user.sub);
   if (!user) return res.status(404).json({ message: 'Not found' });
-  res.json({ id: user.id, name: user.name, email: user.email, phone: user.phone, address: user.address, dob: user.dob, avatar_url: user.avatar_url, twofa_enabled: !!user.twofa_secret });
+  
+  // Get KYC status
+  const kycSubmission = await db('kyc_submissions')
+    .where({ user_id: req.user.sub })
+    .orderBy('created_at', 'desc')
+    .first();
+  
+  const kycStatus = {
+    submitted: !!kycSubmission,
+    status: kycSubmission?.status || 'NOT_SUBMITTED',
+    submittedAt: kycSubmission?.created_at || null,
+    reviewedAt: kycSubmission?.reviewed_at || null,
+    adminRemarks: kycSubmission?.admin_remarks || null,
+    autoDecision: kycSubmission?.auto_decision || null,
+    canResubmit: kycSubmission?.status === 'REJECTED'
+  };
+  
+  res.json({ 
+    id: user.id, 
+    name: user.name, 
+    email: user.email, 
+    phone: user.phone, 
+    address: user.address, 
+    dob: user.dob, 
+    avatar_url: user.avatar_url, 
+    twofa_enabled: !!user.twofa_secret,
+    kyc: kycStatus
+  });
 };
 
 exports.updateProfile = async (req, res) => {

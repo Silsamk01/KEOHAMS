@@ -1,6 +1,5 @@
 const VerificationState = require('../models/verificationState');
 const RiskEvent = require('../models/riskEvent');
-const KYC = require('../models/kyc');
 const risk = require('../services/riskEngine');
 const db = require('../config/db');
 const VerificationStateEvent = require('../models/verificationStateEvent');
@@ -38,7 +37,6 @@ exports.getStatus = async (req, res) => {
     risk_score: row.risk_score,
     risk_level: row.risk_level,
     basic_verified_at: row.basic_verified_at,
-    kyc_verified_at: row.kyc_verified_at,
     manual_lock: !!row.manual_lock
   });
 };
@@ -46,20 +44,6 @@ exports.getStatus = async (req, res) => {
 exports.triggerBasicCheck = async (req, res) => {
   const updated = await maybePromoteToBasic(req.user.sub);
   res.json({ status: updated.status });
-};
-
-exports.submitKyc = async (req, res) => {
-  // Expect body { type, files, notes, doc_country, doc_type, doc_hash }
-  const { type='ID', files=null, notes=null, doc_country=null, doc_type=null, doc_hash=null } = req.body || {};
-  const state = await VerificationState.ensureRow(req.user.sub);
-  if (['LOCKED'].includes(state.status)) return res.status(423).json({ message: 'Account locked' });
-  // Insert submission
-  const [id] = await KYC.create({ user_id: req.user.sub, type, files: files?JSON.stringify(files):null, notes, status: 'PENDING', submitted_at: db.fn.now(), doc_country, doc_type, doc_hash, risk_score_at_submission: state.risk_score });
-  if (!['KYC_PENDING','KYC_VERIFIED'].includes(state.status)) {
-    await VerificationState.updateByUser(req.user.sub, { status: 'KYC_PENDING', updated_at: db.fn.now() });
-    await VerificationStateEvent.log({ user_id: req.user.sub, from_status: state.status, to_status: 'KYC_PENDING', metadata: { submission_id: id } });
-  }
-  res.json({ message: 'KYC submitted', submission_id: id });
 };
 
 // Admin endpoints
@@ -75,38 +59,7 @@ exports.adminGetState = async (req, res) => {
   const user_id = Number(req.params.user_id);
   const row = await VerificationState.findByUser(user_id);
   if (!row) return res.status(404).json({ message: 'Not found' });
-  const kyc = await db('kyc_submissions').where({ user_id }).orderBy('submitted_at','desc').limit(5);
-  res.json({ state: row, recent_kyc: kyc });
-};
-
-exports.adminApproveKyc = async (req, res) => {
-  const submission_id = Number(req.params.submission_id);
-  await db.transaction(async trx => {
-    const sub = await trx(KYC.TABLE).where({ id: submission_id }).first();
-    if (!sub) throw Object.assign(new Error('Not found'), { status: 404 });
-    if (sub.status !== 'PENDING') throw Object.assign(new Error('Already processed'), { status: 400 });
-    await trx(KYC.TABLE).where({ id: submission_id }).update({ status: 'APPROVED', reviewer_id: req.user.sub, reviewed_at: trx.fn.now(), review_notes: req.body.review_notes || null });
-    const prevState = await trx(VerificationState.TABLE).where({ user_id: sub.user_id }).first();
-    await trx(VerificationState.TABLE).where({ user_id: sub.user_id }).update({ status: 'KYC_VERIFIED', kyc_submission_id: submission_id, kyc_verified_at: trx.fn.now(), updated_at: trx.fn.now() });
-    await VerificationStateEvent.log({ user_id: sub.user_id, from_status: prevState.status, to_status: 'KYC_VERIFIED', actor_id: req.user.sub, metadata: { submission_id } }, trx);
-    await risk.adjustScore(sub.user_id, -20, 'KYC_APPROVED', { submission_id }, trx);
-  });
-  res.json({ message: 'KYC approved' });
-};
-
-exports.adminRejectKyc = async (req, res) => {
-  const submission_id = Number(req.params.submission_id);
-  await db.transaction(async trx => {
-    const sub = await trx(KYC.TABLE).where({ id: submission_id }).first();
-    if (!sub) throw Object.assign(new Error('Not found'), { status: 404 });
-    if (sub.status !== 'PENDING') throw Object.assign(new Error('Already processed'), { status: 400 });
-    await trx(KYC.TABLE).where({ id: submission_id }).update({ status: 'REJECTED', reviewer_id: req.user.sub, reviewed_at: trx.fn.now(), review_notes: req.body.review_notes || null });
-    const prevState = await trx(VerificationState.TABLE).where({ user_id: sub.user_id }).first();
-    await trx(VerificationState.TABLE).where({ user_id: sub.user_id }).update({ status: 'REJECTED', updated_at: trx.fn.now() });
-    await VerificationStateEvent.log({ user_id: sub.user_id, from_status: prevState.status, to_status: 'REJECTED', actor_id: req.user.sub, metadata: { submission_id } }, trx);
-    await risk.adjustScore(sub.user_id, +50, 'KYC_REJECTED', { submission_id }, trx);
-  });
-  res.json({ message: 'KYC rejected' });
+  res.json({ state: row });
 };
 
 exports.adminAdjustScore = async (req, res) => {
@@ -134,7 +87,7 @@ exports.adminUnlock = async (req, res) => {
   await db.transaction(async trx => {
     const state = await trx(VerificationState.TABLE).where({ user_id }).first();
     if (!state) throw Object.assign(new Error('Not found'), { status: 404 });
-    newStatus = state.kyc_verified_at ? 'KYC_VERIFIED' : (state.basic_verified_at ? 'BASIC_VERIFIED' : 'UNVERIFIED');
+    newStatus = state.basic_verified_at ? 'BASIC_VERIFIED' : 'UNVERIFIED';
     await trx(VerificationState.TABLE).where({ user_id }).update({ status: newStatus, manual_lock: false, lock_reason: null, locked_at: null, updated_at: trx.fn.now() });
     await VerificationStateEvent.log({ user_id, from_status: state.status, to_status: newStatus, actor_id: req.user.sub, metadata: {} }, trx);
     await risk.adjustScore(user_id, -30, 'ADMIN_UNLOCK', {}, trx);

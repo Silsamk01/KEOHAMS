@@ -106,7 +106,7 @@ async function markPaid(id){
   const q = await db('quotations').where({ id }).first();
   if(!q) throw new Error('Not found');
   if(q.status !== 'REPLIED') throw new Error('Not in payable state');
-  await db('quotations').where({ id }).update({ status:'PAID', paid_at: new Date() });
+  await db('quotations').where({ id }).update({ status:'FULFILLMENT_PENDING', paid_at: new Date() });
   return getDetailed(id);
 }
 
