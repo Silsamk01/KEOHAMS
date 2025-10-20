@@ -68,14 +68,16 @@ async function checkKYCAndLockFeatures() {
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    const res = await fetch("http://localhost:4000/api/user/profile", {
-      headers: { Authorization: `Bearer ${token}` }
+    const res = await fetch(`http://localhost:4000/api/user/profile?_=${Date.now()}` , {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store'
     });
 
     if (!res.ok) return;
     const data = await res.json();
 
-    const kycStatus = data.user?.kyc?.status;
+  // Profile shape returns kyc at top-level e.g., { ..., kyc: { status: 'APPROVED' } }
+  const kycStatus = data?.kyc?.status;
     const isApproved = kycStatus === "APPROVED";
 
     // Get all links that require KYC
@@ -125,6 +127,34 @@ async function checkKYCAndLockFeatures() {
         link.style.cursor = "pointer";
       }
     });
+
+    // Hard-lock navigation when KYC is rejected or resubmission required
+    const requiresImmediateResubmission = kycStatus === 'REJECTED' || kycStatus === 'RESUBMIT_REQUIRED';
+    if (requiresImmediateResubmission) {
+      // If user is not already on the KYC page, send them there
+      const here = location.pathname.replace(/\/$/, '');
+      if (here !== '/kyc-enhanced' && here !== '/kyc-enhanced.html') {
+        // Use replace to avoid creating back button loops
+        location.replace('/kyc-enhanced');
+      }
+
+      // Intercept ALL sidebar links to keep user on KYC page until approved
+      const allLinks = document.querySelectorAll('#dashNav .nav-link');
+      const blockAll = function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        alert('KYC resubmission required. Please submit new documents to continue.');
+        location.replace('/kyc-enhanced');
+        return false;
+      };
+      allLinks.forEach(a => {
+        // Allow sign out link to work
+        if (a.id === 'globalSignOut') return;
+        a.addEventListener('click', blockAll, { capture: true });
+        a.addEventListener('mousedown', blockAll, { capture: true });
+      });
+    }
   } catch (err) {
     console.error("KYC check failed:", err);
   }
@@ -185,6 +215,20 @@ function setupBurger(){
 window.addEventListener('DOMContentLoaded', ()=>{
   ensureSidebar();
   setupBurger();
+  // Keep any visible cart badges in sync across pages
+  try {
+    function cart_get(){ try { return JSON.parse(localStorage.getItem('cart')||'[]'); } catch(_) { return []; } }
+    function updateAllCartBadges(){
+      const items = cart_get();
+      const n = items.reduce((s,i)=> s + Number(i.qty||0), 0);
+      // Update any known cart count badges if present
+      const ids = ['navCartCount','dashCartCount','shopCartCount','blogCartCount','chatCartCount','postCartCount'];
+      ids.forEach(id=>{ const el = document.getElementById(id); if (el) el.textContent = String(n); });
+    }
+    updateAllCartBadges();
+    window.addEventListener('cart:changed', updateAllCartBadges);
+    window.addEventListener('storage', (e)=>{ if (e.key === 'cart') updateAllCartBadges(); });
+  } catch(_){ }
   // Attempt to load pending quotations count (best-effort). Requires auth token.
   try {
     const t = localStorage.getItem('token');

@@ -66,6 +66,21 @@ document.addEventListener('click', (e)=>{
   }
 });
 
+// Normalize notification link behavior across pages
+document.addEventListener('click', (e)=>{
+  const notifLink = e.target.closest('a[href="/notifications"]');
+  if(!notifLink) return;
+  e.preventDefault();
+  // Require auth to view notifications
+  if(!getToken()) { window.location.href='/?#signin'; return; }
+  // If already on dashboard, switch pane directly when available
+  if (window.location.pathname === '/dashboard' && typeof window.switchPane === 'function') {
+    window.switchPane('#pane-notifications');
+  } else {
+    window.location.href = '/dashboard?pane=notifications';
+  }
+});
+
 // ================= Theme Toggle =================
 function applyTheme(theme){
   const root = document.documentElement; // html element

@@ -316,6 +316,44 @@ document.getElementById('kycForm')?.addEventListener('submit', async (e) => {
   }
 });
 
+// Reveal and reset the upload form for resubmission
+function showResubmissionForm() {
+  const formWrap = document.getElementById('uploadFormContainer');
+  const form = document.getElementById('kycForm');
+  if (!formWrap || !form) return;
+
+  // Unhide form
+  formWrap.classList.remove('d-none');
+
+  // Reset form and UI
+  try { form.reset(); } catch(_) {}
+  // Clear file cards state
+  ['idCard','selfieCard','addressCard'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('has-file','error');
+  });
+  // Hide previews and reset info text
+  const previewIds = ['idPreview','selfiePreview','addressPreview'];
+  const infoIds = ['idInfo','selfieInfo','addressInfo'];
+  previewIds.forEach(pid => { const p = document.getElementById(pid); if (p) { p.src = ''; p.classList.add('d-none'); } });
+  infoIds.forEach(iid => { const i = document.getElementById(iid); if (i) { i.textContent = 'No file selected'; i.style.color = ''; } });
+
+  // Reset progress UI
+  const progressContainer = document.getElementById('progressContainer');
+  const progressBar = document.getElementById('uploadProgress');
+  const progressText = document.getElementById('progressText');
+  if (progressContainer) progressContainer.classList.add('d-none');
+  if (progressBar) { progressBar.classList.remove('bg-success'); progressBar.style.width = '0%'; }
+  if (progressText) progressText.textContent = '';
+
+  // Ensure submit button is enabled
+  const submitBtn = document.getElementById('submitBtn');
+  if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i> Submit for Verification'; }
+
+  // Scroll into view
+  try { formWrap.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(_) {}
+}
+
 // Check and display current KYC status
 async function checkKYCStatus() {
   try {
@@ -328,8 +366,6 @@ async function checkKYCStatus() {
     const data = await response.json();
 
     if (data.status !== 'NOT_SUBMITTED') {
-      // Hide upload form
-      document.getElementById('uploadFormContainer').classList.add('d-none');
       
       // Show status
       const statusContainer = document.getElementById('statusContainer');
@@ -337,6 +373,12 @@ async function checkKYCStatus() {
 
       const statusDisplay = document.getElementById('statusDisplay');
       const submission = data.submission;
+
+      const allowResubmission = submission.status === 'RESUBMIT_REQUIRED' || submission.status === 'REJECTED';
+      if (!allowResubmission) {
+        // Hide upload form for non-resubmission states
+        document.getElementById('uploadFormContainer').classList.add('d-none');
+      }
 
       let statusClass = 'status-pending';
       let statusText = 'Pending';
@@ -397,14 +439,23 @@ async function checkKYCStatus() {
           ${submission.admin_remarks ? `<div class="col-12"><strong>Admin Remarks:</strong><br><p class="text-muted">${submission.admin_remarks}</p></div>` : ''}
         </div>
 
-        ${submission.status === 'RESUBMIT_REQUIRED' ? `
+        ${allowResubmission ? `
           <div class="mt-3">
-            <button class="btn btn-primary" onclick="window.location.reload()">
+            <button id="btnResubmitDocs" class="btn btn-primary">
               <i class="fas fa-upload me-2"></i> Submit New Documents
             </button>
           </div>
         ` : ''}
       `;
+
+      // Wire resubmission button if present
+      const btnResubmit = document.getElementById('btnResubmitDocs');
+      if (btnResubmit) {
+        btnResubmit.addEventListener('click', (e) => {
+          e.preventDefault();
+          showResubmissionForm();
+        });
+      }
     }
   } catch (error) {
     console.error('Status check error:', error);

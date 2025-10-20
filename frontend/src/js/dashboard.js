@@ -208,12 +208,15 @@ function setupCurrencyConverter(){
 
   async function populateCurrencies(){
     try {
-      const { data } = await fetchJSON(`${API_BASE}/currency/supported`);
+      // Public endpoint; fetch directly without auth
+      const resp = await fetch(`${API_BASE}/currency/supported`, { cache: 'no-store' });
+      if (!resp.ok) throw new Error(await resp.text());
+      const { data } = await resp.json();
       const opts = data.map(c=>`<option value="${c}">${c}</option>`).join('');
-      selFrom.innerHTML = opts; selTo.innerHTML = opts;
+      if (selFrom) selFrom.innerHTML = opts; if (selTo) selTo.innerHTML = opts;
       // sensible defaults
-      selFrom.value = 'USD';
-      selTo.value = (data.includes('NGN') ? 'NGN' : data[0]);
+      if (selFrom) selFrom.value = 'USD';
+      if (selTo) selTo.value = (data.includes('NGN') ? 'NGN' : data[0]);
     } catch(_){ }
   }
 
@@ -224,12 +227,8 @@ function setupCurrencyConverter(){
     if (!amt || amt < 0) { resultEl.textContent = 'Enter a valid amount'; return; }
     resultEl.textContent = 'Converting…';
     try {
-      const resp = await fetch(`${API_BASE}/currency/convert?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&amount=${encodeURIComponent(amt)}`, { headers: authHeaders() });
-      if (resp.status === 401) {
-        resultEl.innerHTML = '<span class="text-danger">Session expired. Please sign in again.</span>';
-        setTimeout(()=>{ try { localStorage.removeItem('token'); } catch(_){} window.location.href='/?#signin'; }, 1200);
-        return;
-      }
+      // Currency endpoints are public; avoid auth headers to prevent token issues
+      const resp = await fetch(`${API_BASE}/currency/convert?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&amount=${encodeURIComponent(amt)}`, { cache: 'no-store' });
       if (!resp.ok) {
         const txt = await resp.text();
         throw new Error(txt || `HTTP ${resp.status}`);
@@ -237,8 +236,7 @@ function setupCurrencyConverter(){
       const j = await resp.json();
       const { result, rate } = j;
       resultEl.innerHTML = `${amt.toLocaleString(undefined,{maximumFractionDigits:4})} ${from} = <strong>${Number(result).toLocaleString(undefined,{maximumFractionDigits:4})} ${to}</strong>`;
-      metaEl.style.display = 'block';
-      metaEl.textContent = `Rate: 1 ${from} = ${rate.toLocaleString(undefined,{maximumFractionDigits:6})} ${to}`;
+      if (metaEl) { metaEl.style.display = 'block'; metaEl.textContent = `Rate: 1 ${from} = ${rate.toLocaleString(undefined,{maximumFractionDigits:6})} ${to}`; }
     } catch(e){ resultEl.textContent = e.message || 'Conversion failed'; }
   }
 
@@ -372,7 +370,8 @@ window.__chatThreadUpdate = function updateThreadMeta(payload){
   renderCartBadge();
   document.getElementById('dashBellBtn')?.addEventListener('click', (e)=>{ e.preventDefault(); switchPane('#pane-notifications'); loadDashNotifs(); });
   window.addEventListener('storage', (e)=>{ if (e.key==='cart') renderCartBadge(); });
-  document.addEventListener('cart:changed', renderCartBadge);
+  // Listen on window; events are dispatched on window and do not bubble by default
+  window.addEventListener('cart:changed', renderCartBadge);
   // Mark all read
   document.getElementById('dashMarkAll')?.addEventListener('click', async ()=>{
   try { await fetchJSON(`${API_BASE}/notifications/mark-all-read`, { method:'POST', body: JSON.stringify({}) }); loadDashNotifs(); }

@@ -227,6 +227,11 @@ app.get('/cart', (req, res) => {
 	res.sendFile(path.join(frontendPages, 'cart.html'));
 });
 
+// Notifications clean route -> redirect to dashboard notifications pane
+app.get('/notifications', (req, res) => {
+  res.redirect(302, '/dashboard?pane=notifications');
+});
+
 // About & Contact pages (public)
 app.get('/about', (req, res) => {
   res.sendFile(path.join(frontendPages, 'about.html'));
