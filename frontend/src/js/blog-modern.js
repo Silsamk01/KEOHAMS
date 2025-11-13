@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:4000/api';
+import { API_BASE } from './config.js';
 function getToken(){ return localStorage.getItem('token'); }
 function authHeaders(){ const t=getToken(); return t?{ Authorization:`Bearer ${t}` }:{}; }
 
@@ -37,15 +37,37 @@ function createSkeletonCards(count=6){
 function render(){
   gridEl.innerHTML = posts.map(p => postCardHTML(p)).join('');
   emptyStateEl.classList.toggle('d-none', posts.length !== 0);
+  // Update post count badge
+  const countEl = document.getElementById('blogPostCount');
+  if (countEl) countEl.textContent = posts.length;
 }
 
 function postCardHTML(p){
   const dateStr = p.published_at ? new Date(p.published_at).toLocaleDateString(undefined,{month:'short', day:'numeric', year:'numeric'}) : '';
-  const excerpt = (p.excerpt || (p.content||'').replace(/\n+/g,' ').slice(0,160) || '').trim();
-  return `<article class="blog-card fade-in" role="article" tabindex="0" aria-label="${escapeHtml(p.title)}" onclick="location.href='/blog/${encodeURIComponent(p.slug)}'" onkeypress="if(event.key==='Enter'){location.href='/blog/${encodeURIComponent(p.slug)}'}">
-    <div class="meta"><span>${dateStr||''}</span>${p.require_login?'<span class="lock" title="Login required">🔒</span>':''}</div>
-    <h2>${escapeHtml(p.title)}</h2>
-    <p>${escapeHtml(excerpt)}</p>
+  const excerpt = (p.excerpt || (p.content||'').replace(/\n+/g,' ').slice(0,140) || '').trim();
+  const readTime = Math.max(1, Math.ceil((p.content || '').length / 1000));
+  const isPrivate = p.require_login;
+  
+  return `<article class="enhanced-blog-card fade-in" role="article" tabindex="0" aria-label="${escapeHtml(p.title)}" onclick="location.href='/blog/${encodeURIComponent(p.slug)}'" onkeypress="if(event.key==='Enter'){location.href='/blog/${encodeURIComponent(p.slug)}'}">
+    <div class="card-header">
+      <div class="d-flex justify-content-between align-items-start">
+        <div class="meta-info">
+          <span class="date">${dateStr||'Draft'}</span>
+          <span class="read-time">${readTime} min read</span>
+        </div>
+        ${isPrivate ? '<span class="privacy-badge"><i class="bi bi-lock-fill"></i> Private</span>' : '<span class="public-badge"><i class="bi bi-globe"></i> Public</span>'}
+      </div>
+    </div>
+    <div class="card-body">
+      <h3 class="card-title">${escapeHtml(p.title)}</h3>
+      <p class="card-excerpt">${escapeHtml(excerpt)}${excerpt.length >= 140 ? '...' : ''}</p>
+    </div>
+    <div class="card-footer">
+      <div class="d-flex justify-content-between align-items-center">
+        <small class="text-muted">Click to read more</small>
+        <i class="bi bi-arrow-right"></i>
+      </div>
+    </div>
   </article>`;
 }
 
@@ -74,6 +96,13 @@ async function loadNext(){
     render();
     loading = false;
   }
+}
+
+function refreshBlog(){
+  posts = [];
+  page = 1;
+  hasMore = true;
+  loadNext();
 }
 
 function setupInfiniteScroll(){
@@ -130,6 +159,20 @@ function init(){
   loadNext();
   setupInfiniteScroll();
   setupSearch();
+  
+  // Wire up refresh button
+  const refreshBtn = document.getElementById('blogRefreshBtn');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise spinner-border spinner-border-sm"></i> Refreshing...';
+      refreshBtn.disabled = true;
+      refreshBlog();
+      setTimeout(() => {
+        refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh';
+        refreshBtn.disabled = false;
+      }, 1000);
+    });
+  }
 }
 
 init();

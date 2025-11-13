@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:4000/api';
+import { API_BASE } from './config.js';
 function getToken(){ return localStorage.getItem('token'); }
 function authHeaders(){ const t=getToken(); return t?{ Authorization:`Bearer ${t}` }:{}; }
 
@@ -36,8 +36,15 @@ function buildMeta(post){
 async function load(){
   const slug = getSlugFromPath();
   if (!slug) { document.body.innerHTML = '<div class="container py-4">Invalid URL.</div>'; return; }
+  
+  // Detect if we're on public blog page (no auth) or authenticated blog
+  const isPublicPage = location.pathname.includes('/blog-public') || !getToken();
+  const apiEndpoint = isPublicPage 
+    ? `${API_BASE}/public/blog/slug/${encodeURIComponent(slug)}`
+    : `${API_BASE}/blog/slug/${encodeURIComponent(slug)}`;
+  
   try {
-    const post = await fetchJSON(`${API_BASE}/blog/slug/${encodeURIComponent(slug)}`);
+    const post = await fetchJSON(apiEndpoint);
     const gated = post.require_login && !getToken();
     if (gated) {
       document.getElementById('loginRequired').classList.remove('d-none');
@@ -49,7 +56,7 @@ async function load(){
     }
     injectSeoMeta(post);
     setupShare(post);
-    loadRelated(slug);
+    loadRelated(slug, isPublicPage);
   } catch(e){
     console.error(e);
     document.body.innerHTML = '<div class="container py-4 text-danger">Post not found or access denied.</div>';
@@ -92,9 +99,12 @@ function setupShare(post){
   });
 }
 
-async function loadRelated(currentSlug){
+async function loadRelated(currentSlug, isPublicPage = false){
   try {
-    const resp = await fetchJSON(`${API_BASE}/blog?page=1&pageSize=3&meta=1`);
+    const apiEndpoint = isPublicPage
+      ? `${API_BASE}/public/blog?page=1&pageSize=3&meta=1`
+      : `${API_BASE}/blog?page=1&pageSize=3&meta=1`;
+    const resp = await fetchJSON(apiEndpoint);
     const related = (resp.data||[]).filter(p => p.slug !== currentSlug).slice(0,3);
     const container = document.getElementById('relatedPosts');
     container.innerHTML = related.map(p => `<div class="blog-card" onclick="location.href='/blog/${encodeURIComponent(p.slug)}'">

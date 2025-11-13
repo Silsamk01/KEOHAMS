@@ -1,6 +1,5 @@
 import { fetchMyThreads, initChatWidget, ensureSocket } from './chat.js';
-
-const API_BASE = 'http://localhost:4000/api';
+import { API_BASE } from './config.js';
 function token(){ return localStorage.getItem('token'); }
 
 let activeThreadId = null;

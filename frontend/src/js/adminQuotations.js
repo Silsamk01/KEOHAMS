@@ -1,7 +1,8 @@
 // Admin Quotations Management Module
 // Handles list, filter, detail, reply (logistics/discount/methods/notes), mark paid, cancel
 
-const AQ_API = 'http://localhost:4000/api/quotations/admin';
+import { API_BASE } from './config.js';
+const AQ_API = `${API_BASE.replace('/api', '')}/api/quotations/admin`;
 
 function aqToken(){ return localStorage.getItem('token'); }
 function aqHeaders(){ const t = aqToken(); return t? { Authorization: 'Bearer '+t } : {}; }

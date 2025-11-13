@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:4000/api';
+import { API_BASE } from './config.js';
 
 const form = document.getElementById('forgotForm');
 const emailInput = document.getElementById('forgotEmail');

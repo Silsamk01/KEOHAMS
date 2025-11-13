@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:4000/api';
+import { API_BASE } from './config.js';
 
 function saveToken(token) { localStorage.setItem('token', token); }
 function getToken() { return localStorage.getItem('token'); }

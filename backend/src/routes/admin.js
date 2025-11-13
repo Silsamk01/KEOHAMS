@@ -25,4 +25,22 @@ router.post('/pending-registrations/:id/resend', asyncHandler(ctrl.resendPending
 router.delete('/pending-registrations/:id', asyncHandler(ctrl.deletePendingReg));
 router.post('/pending-registrations/:id/force-create', asyncHandler(ctrl.forceCreateFromPending));
 
+// affiliate management
+router.get('/affiliate/stats', asyncHandler(ctrl.getAffiliateStats));
+router.get('/affiliate/list', asyncHandler(ctrl.listAffiliates));
+router.get('/affiliate/:id/details', asyncHandler(ctrl.getAffiliateDetails));
+router.patch('/affiliate/:id/status', asyncHandler(ctrl.updateAffiliateStatus));
+
+// affiliate sales verification
+router.get('/affiliate/sales/pending', asyncHandler(ctrl.getPendingSales));
+router.post('/affiliate/sales/:id/verify', asyncHandler(ctrl.verifySale));
+
+// commission management
+router.get('/affiliate/commissions/unpaid', asyncHandler(ctrl.getUnpaidCommissions));
+router.post('/affiliate/commissions/release', asyncHandler(ctrl.releaseCommissions));
+
+// commission settings
+router.get('/affiliate/settings/commission', asyncHandler(ctrl.getCommissionSettings));
+router.put('/affiliate/settings/commission', asyncHandler(ctrl.updateCommissionSettings));
+
 module.exports = router;

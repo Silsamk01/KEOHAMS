@@ -1,5 +1,6 @@
 const db = require('../config/db');
 const Blog = require('../models/blog');
+const blogSyncService = require('../services/blogSyncService');
 
 // Auth-required list (we enforce login at route layer change later)
 async function list(req, res) {
@@ -69,6 +70,14 @@ async function create(req, res) {
   const id = await Blog.create(data);
   if (tags) await Blog.setTags(id, Array.isArray(tags)? tags : String(tags).split(',') );
   const created = await Blog.getBySlug(data.slug);
+  
+  // Sync to public database if published
+  if (data.status === 'PUBLISHED') {
+    blogSyncService.syncPost(id, 'publish').catch(err => {
+      console.error('Failed to sync new post to public DB:', err);
+    });
+  }
+  
   res.status(201).json(created);
 }
 
@@ -88,6 +97,10 @@ async function update(req, res) {
     patch.reading_minutes = Math.max(1, Math.ceil(words/200));
   }
   if (require_login !== undefined) patch.require_login = !!require_login;
+  
+  const previousPost = await db(Blog.TABLE).where({ id }).first();
+  const wasPublished = previousPost?.status === 'PUBLISHED';
+  
   if (status !== undefined) {
     patch.status = status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT';
     if (patch.status === 'PUBLISHED') patch.published_at = published_at || new Date();
@@ -101,23 +114,54 @@ async function update(req, res) {
   if (tags !== undefined) await Blog.setTags(id, Array.isArray(tags)? tags : String(tags).split(','));
   const updated = await db(Blog.TABLE).where({ id }).first();
   const [withTags] = await Blog.attachTags([updated]);
+  
+  // Sync to public database if published, remove if unpublished
+  const isNowPublished = updated.status === 'PUBLISHED';
+  if (isNowPublished) {
+    blogSyncService.syncPost(id, 'publish').catch(err => {
+      console.error('Failed to sync updated post to public DB:', err);
+    });
+  } else if (wasPublished && !isNowPublished) {
+    blogSyncService.syncPost(id, 'unpublish').catch(err => {
+      console.error('Failed to remove unpublished post from public DB:', err);
+    });
+  }
+  
   res.json(withTags);
 }
 
 async function remove(req, res) {
   const id = parseInt(req.params.id, 10);
   await Blog.remove(id);
+  
+  // Remove from public database
+  blogSyncService.removePostFromPublic(id).catch(err => {
+    console.error('Failed to remove post from public DB:', err);
+  });
+  
   res.json({ message: 'Deleted' });
 }
 
 async function publish(req, res){
   const id = parseInt(req.params.id, 10);
   await Blog.update(id, { status:'PUBLISHED', published_at: new Date() });
+  
+  // Sync to public database
+  blogSyncService.syncPost(id, 'publish').catch(err => {
+    console.error('Failed to sync published post to public DB:', err);
+  });
+  
   res.json({ message:'Published' });
 }
 async function unpublish(req, res){
   const id = parseInt(req.params.id, 10);
   await Blog.update(id, { status:'DRAFT', published_at: null });
+  
+  // Remove from public database
+  blogSyncService.syncPost(id, 'unpublish').catch(err => {
+    console.error('Failed to remove unpublished post from public DB:', err);
+  });
+  
   res.json({ message:'Unpublished' });
 }
 

@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Affiliate Login - KEOHAMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/src/css/styles.css" rel="stylesheet">
+    <style>
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .login-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .login-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        .login-body {
+            padding: 2rem;
+        }
+        
+        .logo-icon {
+            width: 80px;
+            height: 80px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 2rem;
+        }
+        
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        
+        .btn-affiliate {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+        }
+        
+        .btn-affiliate:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #63408d 100%);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-md-5 col-lg-4">
+                    <div class="login-card">
+                        <div class="login-header">
+                            <div class="logo-icon">
+                                <i class="fas fa-network-wired"></i>
+                            </div>
+                            <h3 class="mb-1">Affiliate Login</h3>
+                            <p class="mb-0 small">Access your affiliate dashboard</p>
+                        </div>
+                        
+                        <div class="login-body">
+                            <div id="alertContainer"></div>
+                            
+                            <!-- Login Form -->
+                            <form id="loginForm">
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">
+                                        <i class="fas fa-envelope me-1"></i>Email Address
+                                    </label>
+                                    <input type="email" class="form-control" id="email" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="password" class="form-label">
+                                        <i class="fas fa-lock me-1"></i>Password
+                                    </label>
+                                    <input type="password" class="form-control" id="password" required>
+                                </div>
+                                
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="rememberMe">
+                                    <label class="form-check-label" for="rememberMe">
+                                        Remember me
+                                    </label>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-affiliate w-100 btn-lg" id="loginBtn">
+                                    <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                                </button>
+                            </form>
+                            
+                            <div class="text-center mt-3">
+                                <a href="/affiliate-forgot-password" class="text-decoration-none">
+                                    <i class="fas fa-key me-1"></i>Forgot Password?
+                                </a>
+                            </div>
+                            
+                            <hr class="my-4">
+                            
+                            <div class="text-center">
+                                <p class="text-muted mb-2">Not an affiliate yet?</p>
+                                <a href="/affiliate-register" class="btn btn-outline-primary w-100">
+                                    <i class="fas fa-user-plus me-2"></i>Join Affiliate Program
+                                </a>
+                            </div>
+                            
+                            <div class="text-center mt-3">
+                                <a href="/" class="text-muted small">
+                                    <i class="fas fa-home me-1"></i>Back to Home
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Handle login form
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value
+            };
+            
+            const btn = document.getElementById('loginBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Signing in...';
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.message || 'Login failed');
+                }
+                
+                // Check if 2FA is required
+                if (data.requires2FA) {
+                    // Store temporary session and show 2FA input
+                    sessionStorage.setItem('tempSession', data.tempSession);
+                    show2FAForm();
+                    return;
+                }
+                
+                // Store token
+                localStorage.setItem('token', data.token);
+                
+                // Check if user is an affiliate
+                const checkResponse = await fetch(`/api/affiliate/dashboard/${data.user.id}`, {
+                    headers: { 'Authorization': `Bearer ${data.token}` }
+                });
+                
+                if (checkResponse.status === 404) {
+                    // User is not an affiliate
+                    showAlert('You are not registered as an affiliate. Please join the affiliate program first.', 'warning');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Sign In';
+                    
+                    // Offer to register
+                    setTimeout(() => {
+                        if (confirm('Would you like to join the affiliate program now?')) {
+                            window.location.href = '/affiliate-register';
+                        }
+                    }, 2000);
+                    return;
+                }
+                
+                // Redirect to affiliate dashboard
+                showAlert('Login successful! Redirecting...', 'success');
+                setTimeout(() => {
+                    window.location.href = '/affiliate-dashboard';
+                }, 1000);
+                
+            } catch (error) {
+                showAlert(error.message, 'danger');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Sign In';
+            }
+        });
+
+        // Show 2FA form
+        function show2FAForm() {
+            document.getElementById('loginForm').innerHTML = `
+                <div class="alert alert-info">
+                    <i class="fas fa-shield-alt me-2"></i>
+                    Enter your 6-digit authenticator code
+                </div>
+                
+                <div class="mb-3">
+                    <label for="twoFACode" class="form-label">
+                        <i class="fas fa-key me-1"></i>Authenticator Code
+                    </label>
+                    <input type="text" 
+                           class="form-control text-center" 
+                           id="twoFACode" 
+                           maxlength="6" 
+                           placeholder="000000"
+                           pattern="[0-9]{6}"
+                           required>
+                </div>
+                
+                <div class="text-center mb-3">
+                    <small class="text-muted">or</small>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="recoveryCode" class="form-label">
+                        <i class="fas fa-life-ring me-1"></i>Recovery Code
+                    </label>
+                    <input type="text" 
+                           class="form-control text-center" 
+                           id="recoveryCode" 
+                           placeholder="Enter recovery code">
+                </div>
+                
+                <button type="submit" class="btn btn-affiliate w-100 btn-lg" id="verify2FABtn">
+                    <i class="fas fa-check me-2"></i>Verify
+                </button>
+                
+                <div class="text-center mt-3">
+                    <a href="#" onclick="location.reload()" class="text-decoration-none">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Login
+                    </a>
+                </div>
+            `;
+            
+            document.getElementById('loginForm').onsubmit = verify2FA;
+        }
+
+        // Verify 2FA
+        async function verify2FA(e) {
+            e.preventDefault();
+            
+            const code = document.getElementById('twoFACode').value;
+            const recoveryCode = document.getElementById('recoveryCode').value;
+            const tempSession = sessionStorage.getItem('tempSession');
+            
+            const btn = document.getElementById('verify2FABtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Verifying...';
+            
+            try {
+                const response = await fetch('/api/auth/verify-2fa', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        tempSession,
+                        token: code || null,
+                        recoveryCode: recoveryCode || null
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.message || 'Verification failed');
+                }
+                
+                // Store token
+                localStorage.setItem('token', data.token);
+                sessionStorage.removeItem('tempSession');
+                
+                // Redirect to dashboard
+                showAlert('Verification successful! Redirecting...', 'success');
+                setTimeout(() => {
+                    window.location.href = '/affiliate-dashboard';
+                }, 1000);
+                
+            } catch (error) {
+                showAlert(error.message, 'danger');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check me-2"></i>Verify';
+            }
+        }
+
+        // Show alert function
+        function showAlert(message, type = 'info') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} alert-dismissible fade show`;
+            alert.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            alertContainer.innerHTML = '';
+            alertContainer.appendChild(alert);
+        }
+
+        // Check if already logged in
+        window.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('token');
+            if (token) {
+                // Verify token and redirect if valid
+                fetch('/api/auth/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        window.location.href = '/affiliate-dashboard';
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

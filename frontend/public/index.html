@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <link rel="icon" type="image/jpeg" href="/keohamlogo.jpg">
+  <link rel="shortcut icon" type="image/jpeg" href="/keohamlogo.jpg">
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>KEOHAMS Wholesale Marketplace</title>
@@ -36,6 +38,7 @@
           <li class="nav-item"><a class="nav-link" href="/about">About</a></li>
           <li class="nav-item"><a class="nav-link" href="/contact">Contact</a></li>
           <li class="nav-item"><a class="nav-link" href="/blog-public">Blog</a></li>
+          <li class="nav-item"><a class="nav-link" href="/affiliate-register">Become an Affiliate</a></li>
           <li class="nav-item"><a class="nav-link" href="/shop" data-requires-auth>Shop</a></li>
           <li class="nav-item me-2">
             <select class="form-select form-select-sm" id="currencySelect">
@@ -55,6 +58,9 @@
             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" id="navUserName">Account</a>
             <ul class="dropdown-menu dropdown-menu-end">
               <li><a class="dropdown-item" href="/dashboard" id="navProfileLink">Profile</a></li>
+              <li><a class="dropdown-item" href="/affiliate-dashboard" id="navAffiliateLink">
+                <i class="fas fa-network-wired me-2"></i>Affiliate System
+              </a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item" href="#" id="signOutLink">Sign out</a></li>
             </ul>
@@ -104,9 +110,12 @@
           <span class="badge bg-success-subtle text-success mb-3">New</span>
           <h1 class="display-5 fw-bold">Your Wholesale Partner for Bulk Purchases</h1>
           <p class="lead text-white-50">MOQ-aware pricing, RFQ, and real-time support. Discover thousands of products and tiered discounts.</p>
-          <div class="d-flex gap-2">
+          <div class="d-flex gap-2 flex-wrap">
             <a href="#products" class="btn btn-light btn-lg shadow-sm">Shop Now</a>
             <a href="#" class="btn btn-outline-light btn-lg">Request a Quote</a>
+            <a href="/affiliate-dashboard" class="btn btn-warning btn-lg shadow-sm" id="affiliateHeroBtn">
+              <i class="fas fa-star me-2"></i>Join Affiliate Program
+            </a>
           </div>
         </div>
         <div class="col-lg-5 mt-4 mt-lg-0">
@@ -302,6 +311,69 @@
         <a href="/blog-public" class="small text-decoration-none">View all →</a>
       </div>
       <div id="homeBlogPreview" class="row g-3"></div>
+    </div>
+  </section>
+
+  <!-- Affiliate Program Section -->
+  <section class="py-5 bg-gradient-primary text-white" id="affiliate-program">
+    <div class="container">
+      <div class="row align-items-center">
+        <div class="col-lg-8">
+          <div class="d-flex align-items-center mb-3">
+            <i class="fas fa-star fa-2x me-3"></i>
+            <div>
+              <h2 class="h3 mb-1">Join Our Affiliate Program</h2>
+              <p class="mb-0 text-white-75">Earn commissions by promoting KEOHAMS products</p>
+            </div>
+          </div>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <div class="d-flex align-items-center">
+                <div class="bg-white bg-opacity-25 rounded-circle p-2 me-3">
+                  <i class="fas fa-percentage text-white"></i>
+                </div>
+                <div>
+                  <div class="fw-bold">10% Direct Sales</div>
+                  <small class="text-white-75">Commission on your sales</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="d-flex align-items-center">
+                <div class="bg-white bg-opacity-25 rounded-circle p-2 me-3">
+                  <i class="fas fa-sitemap text-white"></i>
+                </div>
+                <div>
+                  <div class="fw-bold">2.5% Network</div>
+                  <small class="text-white-75">Multi-level commissions</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="d-flex align-items-center">
+                <div class="bg-white bg-opacity-25 rounded-circle p-2 me-3">
+                  <i class="fas fa-chart-line text-white"></i>
+                </div>
+                <div>
+                  <div class="fw-bold">Real-time Tracking</div>
+                  <small class="text-white-75">Monitor your earnings</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4 text-center">
+          <div class="mt-4 mt-lg-0">
+            <a href="/affiliate-dashboard" class="btn btn-light btn-lg shadow" id="joinAffiliateBtn">
+              <i class="fas fa-rocket me-2"></i>
+              Start Earning Today
+            </a>
+            <p class="small mt-2 text-white-75 mb-0">
+              No upfront costs • Instant approval • Comprehensive support
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 

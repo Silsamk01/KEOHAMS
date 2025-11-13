@@ -184,6 +184,375 @@ exports.revokeUserTokens = async (req, res) => {
   const nextVersion = (user.token_version || 1) + 1;
   await Users.update(user.id, { token_version: nextVersion });
   await AdminAudit.log({ admin_id: req.user.sub, target_user_id: user.id, action: 'TOKEN_REVOKE', metadata: { prev: user.token_version, next: nextVersion } }).catch(()=>{});
-  // TODO: emit forceLogout via sockets if implemented
+  
+  // Emit forceLogout via Socket.IO if available
+  try {
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user:${user.id}`).emit('forceLogout', {
+        reason: 'Token revoked by administrator',
+        message: 'Your session has been terminated. Please sign in again.'
+      });
+    }
+  } catch (err) {
+    // Non-fatal if sockets not available
+  }
+
   res.json({ message: 'Revoked', token_version: nextVersion });
+};
+
+// ==================== AFFILIATE MANAGEMENT ====================
+const Affiliate = require('../models/affiliate');
+const AffiliateSale = require('../models/affiliateSale');
+const CommissionRecord = require('../models/commissionRecord');
+const CommissionService = require('../services/commissionService');
+
+/**
+ * Get affiliate system overview statistics
+ */
+exports.getAffiliateStats = async (req, res) => {
+  try {
+    const stats = await CommissionService.getSystemStats();
+    res.json(stats);
+  } catch (error) {
+    console.error('Admin affiliate stats error:', error);
+    res.status(500).json({ message: 'Failed to get affiliate statistics', error: error.message });
+  }
+};
+
+/**
+ * List all affiliates with pagination and search
+ */
+exports.listAffiliates = async (req, res) => {
+  try {
+    const { page = 1, pageSize = 20, search = '', status = 'all' } = req.query;
+    
+    const affiliates = await Affiliate.list({
+      page: parseInt(page),
+      pageSize: parseInt(pageSize),
+      search,
+      status
+    });
+    
+    res.json(affiliates);
+  } catch (error) {
+    console.error('Admin list affiliates error:', error);
+    res.status(500).json({ message: 'Failed to list affiliates', error: error.message });
+  }
+};
+
+/**
+ * Get pending sales awaiting verification
+ */
+exports.getPendingSales = async (req, res) => {
+  try {
+    const pendingSales = await AffiliateSale.getPendingVerification();
+    
+    // Add commission preview for each sale
+    const salesWithPreviews = await Promise.all(
+      pendingSales.map(async (sale) => {
+        const preview = await CommissionService.getCommissionPreview(sale.affiliate_id, sale.sale_amount);
+        return { ...sale, commission_preview: preview };
+      })
+    );
+    
+    res.json(salesWithPreviews);
+  } catch (error) {
+    console.error('Admin get pending sales error:', error);
+    res.status(500).json({ message: 'Failed to get pending sales', error: error.message });
+  }
+};
+
+/**
+ * Verify a sale (approve or reject)
+ */
+exports.verifySale = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action, notes = '' } = req.body;
+    
+    if (!['approve', 'reject'].includes(action)) {
+      return res.status(400).json({ message: 'Invalid action. Must be "approve" or "reject"' });
+    }
+    
+    const sale = await AffiliateSale.findById(id);
+    if (!sale) {
+      return res.status(404).json({ message: 'Sale not found' });
+    }
+    
+    if (sale.verification_status !== 'PENDING') {
+      return res.status(400).json({ message: 'Sale is not pending verification' });
+    }
+    
+    const status = action === 'approve' ? 'VERIFIED' : 'REJECTED';
+    
+    // Update sale status
+    const updatedSale = await AffiliateSale.updateVerificationStatus(
+      id,
+      status,
+      req.user.sub,
+      notes
+    );
+    
+    // Log admin action
+    await AdminAudit.log({
+      admin_id: req.user.sub,
+      target_user_id: sale.affiliate_id,
+      action: `SALE_${status}`,
+      metadata: {
+        sale_id: id,
+        sale_reference: sale.sale_reference,
+        sale_amount: sale.sale_amount,
+        notes
+      }
+    }).catch(() => {});
+    
+    let commissions = null;
+    
+    if (action === 'approve') {
+      // Calculate and create commission records
+      commissions = await CommissionService.calculateCommissions(id);
+    } else {
+      // Cancel any existing pending commissions
+      await CommissionService.cancelCommissions(id);
+    }
+    
+    res.json({
+      message: `Sale ${action}d successfully`,
+      sale: updatedSale,
+      commissions: commissions
+    });
+  } catch (error) {
+    console.error('Admin verify sale error:', error);
+    res.status(500).json({ message: 'Failed to verify sale', error: error.message });
+  }
+};
+
+/**
+ * Get verified sales with unpaid commissions
+ */
+exports.getUnpaidCommissions = async (req, res) => {
+  try {
+    const unpaidSales = await AffiliateSale.getVerifiedUnpaidSales();
+    
+    // Get commission details for each sale
+    const salesWithCommissions = await Promise.all(
+      unpaidSales.map(async (sale) => {
+        const commissions = await CommissionRecord.getCommissionsForSale(sale.id);
+        return { ...sale, commissions };
+      })
+    );
+    
+    res.json(salesWithCommissions);
+  } catch (error) {
+    console.error('Admin get unpaid commissions error:', error);
+    res.status(500).json({ message: 'Failed to get unpaid commissions', error: error.message });
+  }
+};
+
+/**
+ * Release commissions for verified sales
+ */
+exports.releaseCommissions = async (req, res) => {
+  try {
+    const { sale_ids } = req.body;
+    
+    if (!Array.isArray(sale_ids) || sale_ids.length === 0) {
+      return res.status(400).json({ message: 'Sale IDs array required' });
+    }
+    
+    const results = await CommissionService.bulkReleaseCommissions(sale_ids);
+    
+    // Log admin action for each successful release
+    for (const result of results) {
+      if (result.success) {
+        await AdminAudit.log({
+          admin_id: req.user.sub,
+          action: 'COMMISSION_RELEASE',
+          metadata: {
+            sale_id: result.sale_id
+          }
+        }).catch(() => {});
+      }
+    }
+    
+    const successful = results.filter(r => r.success).length;
+    const failed = results.filter(r => !r.success).length;
+    
+    res.json({
+      message: `Commission release completed. ${successful} successful, ${failed} failed.`,
+      results
+    });
+  } catch (error) {
+    console.error('Admin release commissions error:', error);
+    res.status(500).json({ message: 'Failed to release commissions', error: error.message });
+  }
+};
+
+/**
+ * Get affiliate details and statistics
+ */
+exports.getAffiliateDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const affiliate = await Affiliate.findById(id);
+    if (!affiliate) {
+      return res.status(404).json({ message: 'Affiliate not found' });
+    }
+    
+    const stats = await Affiliate.getStats(id);
+    const upline = await Affiliate.getUplineChain(id);
+    const downline = await Affiliate.getDownline(id, 0, 3); // Get 3 levels of downline
+    
+    // Get recent sales and commissions
+    const recentSales = await AffiliateSale.list({
+      affiliate_id: id,
+      page: 1,
+      pageSize: 10
+    });
+    
+    const recentCommissions = await CommissionRecord.getCommissionsForAffiliate(id, {
+      page: 1,
+      pageSize: 10
+    });
+    
+    res.json({
+      affiliate,
+      stats,
+      upline,
+      downline,
+      recent_sales: recentSales.data,
+      recent_commissions: recentCommissions.data
+    });
+  } catch (error) {
+    console.error('Admin get affiliate details error:', error);
+    res.status(500).json({ message: 'Failed to get affiliate details', error: error.message });
+  }
+};
+
+/**
+ * Update affiliate status (activate/deactivate)
+ */
+exports.updateAffiliateStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_active } = req.body;
+    
+    if (typeof is_active !== 'boolean') {
+      return res.status(400).json({ message: 'is_active must be a boolean' });
+    }
+    
+    const affiliate = await Affiliate.findById(id);
+    if (!affiliate) {
+      return res.status(404).json({ message: 'Affiliate not found' });
+    }
+    
+    await db('affiliates').where({ id }).update({ is_active });
+    
+    // Log admin action
+    await AdminAudit.log({
+      admin_id: req.user.sub,
+      target_user_id: affiliate.user_id,
+      action: is_active ? 'AFFILIATE_ACTIVATE' : 'AFFILIATE_DEACTIVATE',
+      metadata: {
+        affiliate_id: id,
+        referral_code: affiliate.referral_code
+      }
+    }).catch(() => {});
+    
+    const updatedAffiliate = await Affiliate.findById(id);
+    
+    res.json({
+      message: `Affiliate ${is_active ? 'activated' : 'deactivated'} successfully`,
+      affiliate: updatedAffiliate
+    });
+  } catch (error) {
+    console.error('Admin update affiliate status error:', error);
+    res.status(500).json({ message: 'Failed to update affiliate status', error: error.message });
+  }
+};
+
+/**
+ * Get commission settings
+ */
+exports.getCommissionSettings = async (req, res) => {
+  try {
+    const settings = await db('commission_settings')
+      .where({ is_active: true })
+      .orderBy('level', 'asc');
+    
+    const validation = await CommissionService.validateCommissionSettings();
+    
+    res.json({
+      settings,
+      validation
+    });
+  } catch (error) {
+    console.error('Admin get commission settings error:', error);
+    res.status(500).json({ message: 'Failed to get commission settings', error: error.message });
+  }
+};
+
+/**
+ * Update commission settings
+ */
+exports.updateCommissionSettings = async (req, res) => {
+  try {
+    const { settings } = req.body;
+    
+    if (!Array.isArray(settings)) {
+      return res.status(400).json({ message: 'Settings must be an array' });
+    }
+    
+    // Validate settings
+    let totalRate = 0;
+    for (const setting of settings) {
+      if (typeof setting.level !== 'number' || typeof setting.rate !== 'number') {
+        return res.status(400).json({ message: 'Invalid setting format' });
+      }
+      totalRate += setting.rate;
+    }
+    
+    const maxTotalRate = settings[0]?.max_total_rate || 25.00;
+    if (totalRate > maxTotalRate) {
+      return res.status(400).json({ 
+        message: `Total commission rate (${totalRate}%) exceeds maximum (${maxTotalRate}%)` 
+      });
+    }
+    
+    // Update settings in transaction
+    await db.transaction(async (trx) => {
+      // Deactivate all existing settings
+      await trx('commission_settings').update({ is_active: false });
+      
+      // Insert new settings
+      for (const setting of settings) {
+        await trx('commission_settings').insert({
+          level: setting.level,
+          rate: setting.rate,
+          max_total_rate: setting.max_total_rate || maxTotalRate,
+          is_active: true
+        });
+      }
+    });
+    
+    // Log admin action
+    await AdminAudit.log({
+      admin_id: req.user.sub,
+      action: 'COMMISSION_SETTINGS_UPDATE',
+      metadata: {
+        new_settings: settings,
+        total_rate: totalRate
+      }
+    }).catch(() => {});
+    
+    res.json({
+      message: 'Commission settings updated successfully',
+      total_rate: totalRate
+    });
+  } catch (error) {
+    console.error('Admin update commission settings error:', error);
+    res.status(500).json({ message: 'Failed to update commission settings', error: error.message });
+  }
 };

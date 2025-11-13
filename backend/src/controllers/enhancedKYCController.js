@@ -500,7 +500,56 @@ exports.adminReviewKYC = async (req, res) => {
       action === 'APPROVE' ? 'APPROVED' : action === 'REJECT' ? 'REJECTED' : 'RESUBMIT_REQUESTED',
       submission.status, newStatus, remarks || '');
 
-    // TODO: Send notification/email to user
+    // Send email notification to user
+    try {
+      const user = await db('users').where({ id: submission.user_id }).first();
+      if (user && user.email) {
+        const { sendMail } = require('../utils/email');
+        let emailSubject, emailBody;
+
+        if (action === 'APPROVE') {
+          emailSubject = 'KYC Verification Approved ✓';
+          emailBody = `
+            <h2>Congratulations! Your KYC verification has been approved.</h2>
+            <p>Dear ${user.name},</p>
+            <p>Your KYC submission has been reviewed and <strong>approved</strong>.</p>
+            <p>You now have full access to all platform features including:</p>
+            <ul>
+              <li>Product inquiries</li>
+              <li>Quotation requests</li>
+              <li>Order placement</li>
+            </ul>
+            <p>Thank you for completing the verification process.</p>
+            <p><a href="${process.env.APP_URL || 'http://localhost:4000'}/dashboard">Go to Dashboard</a></p>
+          `;
+        } else if (action === 'REJECT') {
+          emailSubject = 'KYC Verification - Action Required';
+          emailBody = `
+            <h2>KYC Verification Update</h2>
+            <p>Dear ${user.name},</p>
+            <p>Your KYC submission has been reviewed and requires resubmission.</p>
+            ${remarks ? `<p><strong>Admin remarks:</strong> ${remarks}</p>` : ''}
+            <p>Please review the feedback and submit updated documents.</p>
+            <p><a href="${process.env.APP_URL || 'http://localhost:4000'}/kyc-enhanced">Resubmit KYC Documents</a></p>
+          `;
+        } else {
+          emailSubject = 'KYC Verification - Resubmission Requested';
+          emailBody = `
+            <h2>KYC Verification Update</h2>
+            <p>Dear ${user.name},</p>
+            <p>Your KYC submission requires additional documents or corrections.</p>
+            ${remarks ? `<p><strong>Admin remarks:</strong> ${remarks}</p>` : ''}
+            <p><a href="${process.env.APP_URL || 'http://localhost:4000'}/kyc-enhanced">Update KYC Submission</a></p>
+          `;
+        }
+
+        await sendMail(user.email, emailSubject, emailBody);
+        logger.info({ userId: submission.user_id, action }, 'KYC notification email sent');
+      }
+    } catch (emailError) {
+      logger.error({ err: emailError }, 'Failed to send KYC notification email');
+      // Non-fatal - don't block the response
+    }
 
     res.json({
       message: `KYC submission ${action.toLowerCase()}d successfully`,

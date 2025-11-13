@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:4000/api';
+import { API_BASE } from './config.js';
 
 async function verify() {
   const params = new URLSearchParams(location.search);

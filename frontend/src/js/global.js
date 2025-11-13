@@ -1,4 +1,5 @@
-const API_BASE = 'http://localhost:4000/api';
+import { API_BASE, WS_BASE } from './config.js';
+
 function getToken(){ try { return localStorage.getItem('token'); } catch { return null; } }
 function authHeaders(){ const t = getToken(); return t ? { Authorization: `Bearer ${t}` } : {}; }
 async function fetchJSON(url, opts={}){
@@ -46,7 +47,7 @@ function hideUnread(){
 function setupSocket(){
   const t = getToken(); if(!t || !window.io) return;
   try {
-    const s = window.io('http://localhost:4000', { auth: { token: t } });
+    const s = window.io(WS_BASE, { auth: { token: t } });
     s.on('notif:new', ()=> loadUnread());
   } catch(_){}
 }

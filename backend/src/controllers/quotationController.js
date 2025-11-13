@@ -133,6 +133,17 @@ exports.adminReply = async (req,res)=>{
   const { logistics_amount, discount_amount, allowed_payment_methods, notes_admin } = req.body;
   try {
     const q = await Quotation.reply(id, { logistics_amount, discount_amount, allowed_payment_methods, notes_admin });
+    // Send notification to user
+    try {
+      const Notifications = require('../models/notification');
+      await Notifications.create({
+        user_id: q.user_id,
+        title: 'Quotation Updated',
+        body: `Your quotation ${q.reference} has been updated. Total: $${q.total_amount.toFixed(2)}`,
+        audience: 'USER',
+        url: `/dashboard?pane=quotations`
+      });
+    } catch(notifErr){ console.warn('Failed to create notification:', notifErr); }
     // Email user quoting final total
     try { await maybeEmail(q.user_id, 'Quotation Updated', `<p>Your quotation <strong>${q.reference}</strong> has been updated. Total: ${q.total_amount}</p>`); } catch(_){ }
     res.json(q);

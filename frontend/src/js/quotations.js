@@ -2,11 +2,13 @@
 // Handles listing, detail view, payment initiation for user quotations
 // Relies on token-based auth already handled globally
 
-const Q_API = 'http://localhost:4000/api/quotations';
+import { API_BASE } from './config.js';
+const Q_API = `${API_BASE.replace('/api', '')}/api/quotations`;
 
 function qAuthHeaders(){
   const t = localStorage.getItem('token');
-  return t ? { Authorization: `Bearer ${t}` } : {}; }
+  return t ? { Authorization: `Bearer ${t}` } : {}; 
+}
 
 async function qFetchJSON(url, opts={}){
   const res = await fetch(url, { ...opts, headers: { 'Accept':'application/json', ...(opts.headers||{}), ...qAuthHeaders() } });
@@ -35,7 +37,10 @@ export async function loadQuotations(force=false){
     qState.list = data.data || [];
     qState.total = data.total || qState.list.length;
     renderQuotationList();
-  } catch(e){ listEl.innerHTML = `<div class="p-3 small text-danger">${e.message||'Failed to load'}</div>`; }
+  } catch(e){ 
+    console.error('Failed to load quotations:', e);
+    listEl.innerHTML = `<div class="p-3 small text-danger"><strong>Error loading quotations:</strong><br>${e.message||'Failed to load'}</div>`; 
+  }
 }
 
 function renderQuotationList(){
@@ -65,15 +70,20 @@ function qStatusShort(s){ return s==='REQUESTED'?'Pending': (s==='REPLIED'?'Repl
 
 async function selectQuotation(id){
   qState.selectedId = id;
-  const detailEl = document.getElementById('quoDetailBody'); if(detailEl) detailEl.innerHTML = '<div class="p-3 small text-muted">Loading…</div>';
+  const detailEl = document.getElementById('quoDetailBody'); 
+  if(detailEl) detailEl.innerHTML = '<div class="p-3 small text-muted">Loading…</div>';
   try {
     const q = await qFetchJSON(`${Q_API}/mine/${id}`);
+    console.log('Quotation detail loaded:', q); // Debug log
     renderQuotationDetail(q);
     // Highlight selection
     document.querySelectorAll('#quoList .list-group-item').forEach(li=> li.classList.remove('active'));
     const match = Array.from(document.querySelectorAll('#quoList .list-group-item')).find(li=> li.textContent.includes(q.reference));
     if(match) match.classList.add('active');
-  } catch(e){ if(detailEl) detailEl.innerHTML = `<div class="text-danger small p-3">${e.message||'Failed to load detail'}</div>`; }
+  } catch(e){ 
+    console.error('Failed to load quotation detail:', e);
+    if(detailEl) detailEl.innerHTML = `<div class="alert alert-danger small p-3"><strong>Error:</strong> ${e.message||'Failed to load detail'}</div>`; 
+  }
 }
 
 function renderQuotationDetail(q){
@@ -88,31 +98,42 @@ function renderQuotationDetail(q){
   const payMenu = document.getElementById('quoPaymentMenu');
   if(!bodyEl) return;
   if(!q){
-    titleEl.textContent='Select a quotation';
+    if(titleEl) titleEl.textContent='Select a quotation';
     bodyEl.innerHTML='<div class="text-muted small">Choose a request on the left to view details.</div>';
-    actionsEl.style.display='none'; metaFooter.style.display='none'; return;
+    if(actionsEl) actionsEl.style.display='none'; 
+    if(metaFooter) metaFooter.style.display='none'; 
+    return;
   }
-  titleEl.textContent = q.reference;
-  statusBadge.textContent = q.status;
-  statusBadge.className = `badge rounded-pill text-bg-${qStatusColor(q.status)}`;
-  actionsEl.style.display='flex';
-  metaFooter.style.display='flex';
-  metaCreated.textContent = 'Created ' + qFormatDate(q.created_at);
+  if(titleEl) titleEl.textContent = q.reference || 'Quotation';
+  if(statusBadge) {
+    statusBadge.textContent = q.status || 'UNKNOWN';
+    statusBadge.className = `badge rounded-pill text-bg-${qStatusColor(q.status)}`;
+  }
+  if(actionsEl) actionsEl.style.display='flex';
+  if(metaFooter) metaFooter.style.display='flex';
+  if(metaCreated) metaCreated.textContent = 'Created ' + qFormatDate(q.created_at);
   const sum = qTotalSummary(q);
-  metaTotals.textContent = sum;
+  if(metaTotals) metaTotals.textContent = sum;
+  
+  // Ensure items is an array
+  const items = Array.isArray(q.items) ? q.items : [];
+  const itemsHtml = items.length > 0 
+    ? items.map(i=> `<tr><td>${escapeHtml(i.product_name||'Unknown')}</td><td class="text-end">${i.quantity||0}</td><td class="text-end">${qFormatMoney(i.unit_price)}</td><td class="text-end">${qFormatMoney(i.line_total)}</td></tr>`).join('')
+    : '<tr><td colspan="4" class="text-muted text-center">No items found</td></tr>';
+  
   bodyEl.innerHTML = `
     <div class="mb-3">
-      <div class="small text-muted mb-1">Items</div>
+      <div class="small text-muted mb-1">Items (${items.length})</div>
       <div class="table-responsive small">
         <table class="table table-sm align-middle mb-0">
           <thead><tr><th>Product</th><th class="text-end">Qty</th><th class="text-end">Unit</th><th class="text-end">Line</th></tr></thead>
           <tbody>
-            ${(q.items||[]).map(i=> `<tr><td>${escapeHtml(i.product_name)}</td><td class="text-end">${i.quantity}</td><td class="text-end">${qFormatMoney(i.unit_price)}</td><td class="text-end">${qFormatMoney(i.line_total)}</td></tr>`).join('')}
+            ${itemsHtml}
           </tbody>
         </table>
       </div>
     </div>
-    ${(q.items||[]).some(it=> Number(it.unit_price)===0) ? '<div class="alert alert-warning py-2 small">One or more items had no price at request time; please contact support if unexpected.</div>' : ''}
+    ${items.some(it=> Number(it.unit_price)===0) ? '<div class="alert alert-warning py-2 small">One or more items had no price at request time; please contact support if unexpected.</div>' : ''}
     <div class="row g-3 small">
       <div class="col-md-6">
         <div class="fw-semibold mb-1">User Notes</div>
@@ -128,9 +149,9 @@ function renderQuotationDetail(q){
   // Payment
   if(q.status === 'REPLIED'){
     const allowed = (q.allowed_payment_methods||'').split(',').filter(Boolean);
-    if(allowed.length){
+    if(allowed.length && payWrap){
       payWrap.style.display='block';
-      payMenu.innerHTML = '';
+      if(payMenu) payMenu.innerHTML = '';
       allowed.forEach(m=>{
         const li = document.createElement('li');
         const a = document.createElement('a');
@@ -138,11 +159,14 @@ function renderQuotationDetail(q){
         a.href='#';
         a.textContent = 'Pay with ' + m.charAt(0).toUpperCase()+m.slice(1);
         a.addEventListener('click', (e)=>{ e.preventDefault(); initiatePayment(q.id, m); });
-        li.appendChild(a); payMenu.appendChild(li);
+        li.appendChild(a); 
+        if(payMenu) payMenu.appendChild(li);
       });
-    } else { payWrap.style.display='none'; }
+    } else { 
+      if(payWrap) payWrap.style.display='none'; 
+    }
   } else {
-    payWrap.style.display='none';
+    if(payWrap) payWrap.style.display='none';
   }
 }
 
@@ -183,13 +207,22 @@ export function initQuotationsUI(){
   document.getElementById('quoRefreshBtn')?.addEventListener('click', ()=> loadQuotations(true));
   document.getElementById('quoStatusFilter')?.addEventListener('change', (e)=>{ qState.filterStatus = e.target.value; loadQuotations(true); });
   // Lazy load when pane first shown
-  const obs = new MutationObserver(()=>{
-    if(!pane.classList.contains('d-none')) { loadQuotations(); obs.disconnect(); }
+  const obs = new MutationObserver((mutations)=>{
+    if(!pane.classList.contains('d-none')) { 
+      loadQuotations(); 
+      obs.disconnect(); 
+    }
   });
   obs.observe(pane, { attributes:true, attributeFilter:['class'] });
+  // Also check immediately in case pane is already visible
+  if(!pane.classList.contains('d-none')) {
+    loadQuotations();
+  }
 }
 
 // Auto-init if script loaded after DOM (non-module inclusion scenario)
 if (typeof window !== 'undefined') {
   window.initQuotationsUI = initQuotationsUI;
+  // Expose loadQuotations function for dashboard access
+  window.quotationsModule = { loadQuotations };
 }

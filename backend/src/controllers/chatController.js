@@ -36,11 +36,21 @@ async function startThread(req, res) {
     try {
       const user = await db('users').where({ id: userId }).first();
       if (user?.email) {
+        let productInfo = '';
+        if (thread.product_id) {
+          try {
+            const product = await db('products').where({ id: thread.product_id }).first();
+            productInfo = product ? ` about "${product.title || product.name || 'Unknown Product'}"` : ` about product #${thread.product_id}`;
+          } catch(_) {
+            productInfo = ` about product #${thread.product_id}`;
+          }
+        }
+        
         await sendMail({
           to: user.email,
           subject: 'We received your inquiry',
           html: `<p>Hi ${user.name || ''},</p>
-                 <p>Your chat has been started${thread.product_id ? ' about product #'+thread.product_id : ''}. We'll get back to you shortly.</p>
+                 <p>Your chat has been started${productInfo}. We'll get back to you shortly.</p>
                  <p>You can continue the conversation from your dashboard.</p>`
         });
       }

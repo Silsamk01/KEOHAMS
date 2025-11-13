@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Admin · KEOHAMS</title>
+  <link rel="icon" type="image/jpeg" href="/keohamlogo.jpg">
+  <link rel="shortcut icon" type="image/jpeg" href="/keohamlogo.jpg">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="/src/css/styles.css" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -50,6 +52,7 @@
           <button class="nav-link" id="tab-chats" data-bs-toggle="pill" data-bs-target="#pane-chats" type="button" role="tab">Chats</button>
           <button class="nav-link position-relative" id="tab-quotations" data-bs-toggle="pill" data-bs-target="#pane-quotations" type="button" role="tab">Quotations <span class="badge bg-warning text-dark ms-1 d-none" id="adminQuoBadge">0</span></button>
           <button class="nav-link" id="tab-contact" data-bs-toggle="pill" data-bs-target="#pane-contact" type="button" role="tab">Contact Messages</button>
+          <button class="nav-link position-relative" id="tab-affiliate" data-bs-toggle="pill" data-bs-target="#pane-affiliate" type="button" role="tab">Affiliate System <span class="badge bg-info ms-1 d-none" id="affiliatePendingBadge">0</span></button>
         </nav>
       </aside>
       <div class="admin-content">
@@ -678,6 +681,190 @@
           </div>
         </div>
       </div>
+
+      <!-- Affiliate System Tab -->
+      <div class="tab-pane fade" id="pane-affiliate" role="tabpanel">
+        <div class="row g-3 mb-4">
+          <div class="col-md-3">
+            <div class="card text-center">
+              <div class="card-body">
+                <div class="text-muted">Total Affiliates</div>
+                <div class="display-6 text-primary" id="affiliateStatsTotal">–</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card text-center">
+              <div class="card-body">
+                <div class="text-muted">Pending Sales</div>
+                <div class="display-6 text-warning" id="affiliateStatsPending">–</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card text-center">
+              <div class="card-body">
+                <div class="text-muted">Total Sales</div>
+                <div class="display-6 text-success" id="affiliateStatsVerified">–</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card text-center">
+              <div class="card-body">
+                <div class="text-muted">Total Commissions</div>
+                <div class="display-6 text-info" id="affiliateStatsCommissions">$0</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Affiliate Sub-tabs -->
+        <ul class="nav nav-tabs" id="affiliateSubTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="affiliate-overview-tab" data-bs-toggle="tab" data-bs-target="#affiliate-overview" type="button" role="tab">
+              Overview
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link position-relative" id="affiliate-sales-tab" data-bs-toggle="tab" data-bs-target="#affiliate-sales" type="button" role="tab">
+              Sales Verification
+              <span class="badge bg-warning ms-1" id="pendingSalesBadge" style="display:none;">0</span>
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="affiliate-commissions-tab" data-bs-toggle="tab" data-bs-target="#affiliate-commissions" type="button" role="tab">
+              Commission Management
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="affiliate-list-tab" data-bs-toggle="tab" data-bs-target="#affiliate-list" type="button" role="tab">
+              Affiliate List
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="affiliate-settings-tab" data-bs-toggle="tab" data-bs-target="#affiliate-settings" type="button" role="tab">
+              Settings
+            </button>
+          </li>
+        </ul>
+
+        <div class="tab-content mt-3" id="affiliateSubTabContent">
+          <!-- Overview -->
+          <div class="tab-pane fade show active" id="affiliate-overview" role="tabpanel">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="card">
+                  <div class="card-header">
+                    <h5>Recent Sales Activity</h5>
+                  </div>
+                  <div class="card-body">
+                    <div id="recentSalesActivity">Loading...</div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="card">
+                  <div class="card-header">
+                    <h5>Commission Statistics</h5>
+                  </div>
+                  <div class="card-body">
+                    <div id="commissionStatistics">Loading...</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sales Verification -->
+          <div class="tab-pane fade" id="affiliate-sales" role="tabpanel">
+            <div class="card">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Pending Sales Verification</h5>
+                <button class="btn btn-outline-secondary btn-sm" id="refreshPendingSales">
+                  <i class="fas fa-sync-alt me-1"></i>Refresh
+                </button>
+              </div>
+              <div class="card-body">
+                <div id="pendingSalesList">Loading...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Commission Management -->
+          <div class="tab-pane fade" id="affiliate-commissions" role="tabpanel">
+            <div class="row">
+              <div class="col-12 mb-3">
+                <div class="card">
+                  <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Unpaid Commissions</h5>
+                    <div>
+                      <button class="btn btn-outline-secondary btn-sm me-2" id="refreshUnpaidCommissions">
+                        <i class="fas fa-sync-alt me-1"></i>Refresh
+                      </button>
+                      <button class="btn btn-success btn-sm" id="bulkReleaseCommissions" disabled>
+                        <i class="fas fa-money-bill-wave me-1"></i>Release Selected
+                      </button>
+                    </div>
+                  </div>
+                  <div class="card-body">
+                    <div id="unpaidCommissionsList">Loading...</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Affiliate List -->
+          <div class="tab-pane fade" id="affiliate-list" role="tabpanel">
+            <div class="card">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">All Affiliates</h5>
+                <div class="d-flex gap-2">
+                  <div class="input-group" style="max-width: 300px;">
+                    <input type="text" class="form-control form-control-sm" id="affiliateSearch" placeholder="Search affiliates...">
+                    <button class="btn btn-outline-secondary btn-sm" id="searchAffiliates">
+                      <i class="fas fa-search"></i>
+                    </button>
+                  </div>
+                  <button class="btn btn-outline-secondary btn-sm" id="refreshAffiliates">
+                    <i class="fas fa-sync-alt me-1"></i>Refresh
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div id="affiliatesList">Loading...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Settings -->
+          <div class="tab-pane fade" id="affiliate-settings" role="tabpanel">
+            <div class="row">
+              <div class="col-md-8">
+                <div class="card">
+                  <div class="card-header">
+                    <h5>Commission Settings</h5>
+                  </div>
+                  <div class="card-body">
+                    <div id="commissionSettingsForm">Loading...</div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="card">
+                  <div class="card-header">
+                    <h5>System Status</h5>
+                  </div>
+                  <div class="card-body">
+                    <div id="affiliateSystemStatus">Loading...</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
         </div>
       </div>
     </div>
@@ -768,6 +955,7 @@
   </div>
 
   <script src="/src/js/admin-kyc-review.js"></script>
+  <script src="/src/js/admin-affiliate.js"></script>
   <script type="module" src="/src/js/admin.js"></script>
 </body>
 </html>

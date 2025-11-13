@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:4000/api';
+import { API_BASE } from './config.js';
 function getToken(){ try { return localStorage.getItem('token'); } catch { return null; } }
 function authHeaders(){ const t = getToken(); return t ? { Authorization: `Bearer ${t}` } : {}; }
 async function fetchJSON(url){ const r = await fetch(url, { headers: authHeaders() }); if(!r.ok) throw new Error(await r.text()); return r.json(); }

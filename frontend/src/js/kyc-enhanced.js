@@ -3,7 +3,7 @@
  * Handles document upload, preview, validation, and webcam capture
  */
 
-const API_BASE = 'http://localhost:4000/api';
+import { API_BASE } from './config.js';
 
 function getToken() {
   return localStorage.getItem('token');

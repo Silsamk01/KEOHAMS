@@ -1,3 +1,5 @@
+import { API_BASE } from './config.js';
+
 function cart_get(){ try { return JSON.parse(localStorage.getItem('cart')||'[]'); } catch(_) { return []; } }
 function cart_set(items){ localStorage.setItem('cart', JSON.stringify(items)); window.dispatchEvent(new CustomEvent('cart:changed', { detail:{ items } })); }
 function cart_total(items){ return items.reduce((s,i)=>s + Number(i.price)*Number(i.qty), 0); }
@@ -42,7 +44,7 @@ async function apiRequestQuotation(){
   const btn = document.getElementById('checkoutBtn');
   btn.disabled = true; const orig = btn.textContent; btn.textContent='Requesting...';
   try {
-    const res = await fetch('http://localhost:4000/api/quotations', {
+    const res = await fetch(`${API_BASE.replace('/api', '')}/api/quotations`, {
       method:'POST',
       headers:{ 'Content-Type':'application/json', Authorization: 'Bearer '+token },
       body: JSON.stringify({ items: payloadItems })

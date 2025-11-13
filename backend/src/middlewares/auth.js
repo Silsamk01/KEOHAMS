@@ -36,7 +36,23 @@ function requireRole(...roles) {
   };
 }
 
-module.exports = { requireAuth, requireRole };
+function requireSelfOrAdmin(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+  
+  const targetUserId = parseInt(req.params.user_id);
+  const currentUserId = parseInt(req.user.sub);
+  
+  // Allow if user is accessing their own data or if user is admin
+  if (currentUserId === targetUserId || req.user.role === 'ADMIN') {
+    return next();
+  }
+  
+  return res.status(403).json({ message: 'Forbidden' });
+}
+
+module.exports = { requireAuth, requireRole, requireSelfOrAdmin };
 /**
  * Try to read JWT if sent; do not error if absent/invalid. Sets req.user when valid.
  */

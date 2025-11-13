@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Affiliate Dashboard - KEOHAMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/src/css/styles.css" rel="stylesheet">
+    <style>
+        .affiliate-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stats-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+            transition: transform 0.2s;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .stats-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .tree-item {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            margin: 0.5rem 0;
+            padding: 1rem;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .level-indicator {
+            background: #667eea;
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        
+        .commission-preview {
+            background: #e8f5e8;
+            border: 1px solid #d4edda;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .referral-code {
+            background: #667eea;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            font-family: monospace;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        
+        .referral-link {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 0.5rem;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-network-wired me-2"></i>
+                Affiliate Dashboard
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/dashboard">
+                    <i class="fas fa-tachometer-alt me-1"></i>
+                    Main Dashboard
+                </a>
+                <a class="nav-link" href="#" onclick="logout()">
+                    <i class="fas fa-sign-out-alt me-1"></i>
+                    Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Loading State -->
+        <div id="loadingState" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading affiliate dashboard...</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorState" class="alert alert-danger d-none">
+            <h5><i class="fas fa-exclamation-triangle me-2"></i>Error</h5>
+            <p id="errorMessage"></p>
+            <button class="btn btn-outline-danger" onclick="location.reload()">
+                <i class="fas fa-redo me-1"></i>Retry
+            </button>
+        </div>
+
+        <!-- Not Affiliate State -->
+        <div id="notAffiliateState" class="d-none">
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-body text-center py-5">
+                            <i class="fas fa-user-plus fa-4x text-muted mb-4"></i>
+                            <h3>Join the KEOHAMS Affiliate Program</h3>
+                            <p class="text-muted mb-4">
+                                Start earning commissions by promoting KEOHAMS products.
+                                Earn 10% on direct sales plus 2.5% on your network sales.
+                            </p>
+                            
+                            <div class="mb-4">
+                                <label for="parentReferralCode" class="form-label">
+                                    Parent Referral Code (Optional)
+                                </label>
+                                <input type="text" 
+                                       class="form-control text-center" 
+                                       id="parentReferralCode" 
+                                       placeholder="Enter referral code if you were referred">
+                            </div>
+                            
+                            <button class="btn btn-primary btn-lg" onclick="registerAffiliate()">
+                                <i class="fas fa-rocket me-2"></i>
+                                Join Affiliate Program
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Dashboard -->
+        <div id="dashboardContent" class="d-none">
+            <!-- Affiliate Header Card -->
+            <div class="affiliate-card">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h2><i class="fas fa-star me-2"></i>Welcome, <span id="affiliateName"></span>!</h2>
+                        <p class="mb-2">Your referral code: <span class="referral-code" id="referralCode"></span></p>
+                        <p class="mb-0">Share your code and start earning commissions!</p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="text-white-50 small">Total Earnings</div>
+                        <div class="h3 mb-0">$<span id="totalEarnings">0.00</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="stats-card text-center">
+                        <i class="fas fa-dollar-sign fa-2x text-success mb-2"></i>
+                        <div class="stats-number text-success">$<span id="availableBalance">0.00</span></div>
+                        <div class="text-muted">Available Balance</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card text-center">
+                        <i class="fas fa-clock fa-2x text-warning mb-2"></i>
+                        <div class="stats-number text-warning">$<span id="pendingBalance">0.00</span></div>
+                        <div class="text-muted">Pending Balance</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card text-center">
+                        <i class="fas fa-shopping-cart fa-2x text-info mb-2"></i>
+                        <div class="stats-number text-info"><span id="totalSales">0</span></div>
+                        <div class="text-muted">Total Sales</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card text-center">
+                        <i class="fas fa-users fa-2x text-purple mb-2"></i>
+                        <div class="stats-number text-purple"><span id="directReferrals">0</span></div>
+                        <div class="text-muted">Direct Referrals</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Tabs -->
+            <ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab">
+                        <i class="fas fa-chart-line me-1"></i>Overview
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="sales-tab" data-bs-toggle="tab" data-bs-target="#sales" type="button" role="tab">
+                        <i class="fas fa-shopping-cart me-1"></i>Sales
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="commissions-tab" data-bs-toggle="tab" data-bs-target="#commissions" type="button" role="tab">
+                        <i class="fas fa-percentage me-1"></i>Commissions
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="network-tab" data-bs-toggle="tab" data-bs-target="#network" type="button" role="tab">
+                        <i class="fas fa-sitemap me-1"></i>Network
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="tools-tab" data-bs-toggle="tab" data-bs-target="#tools" type="button" role="tab">
+                        <i class="fas fa-tools me-1"></i>Tools
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="dashboardTabContent">
+                <!-- Overview Tab -->
+                <div class="tab-pane fade show active" id="overview" role="tabpanel">
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fas fa-chart-bar me-2"></i>Recent Sales</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="recentSalesList">
+                                        <div class="text-center text-muted py-3">
+                                            <i class="fas fa-shopping-cart fa-2x mb-2"></i>
+                                            <p>No recent sales</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fas fa-coins me-2"></i>Recent Commissions</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="recentCommissionsList">
+                                        <div class="text-center text-muted py-3">
+                                            <i class="fas fa-percentage fa-2x mb-2"></i>
+                                            <p>No recent commissions</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sales Tab -->
+                <div class="tab-pane fade" id="sales" role="tabpanel">
+                    <div class="mt-4">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <h4><i class="fas fa-shopping-cart me-2"></i>Record New Sale</h4>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newSaleModal">
+                                    <i class="fas fa-plus me-1"></i>Record Sale
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-body">
+                                <div id="salesList">
+                                    <div class="text-center py-3">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading sales...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Commissions Tab -->
+                <div class="tab-pane fade" id="commissions" role="tabpanel">
+                    <div class="mt-4">
+                        <h4><i class="fas fa-percentage me-2"></i>Commission History</h4>
+                        <div class="card">
+                            <div class="card-body">
+                                <div id="commissionsList">
+                                    <div class="text-center py-3">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading commissions...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Network Tab -->
+                <div class="tab-pane fade" id="network" role="tabpanel">
+                    <div class="mt-4">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h4><i class="fas fa-arrow-up me-2"></i>Your Upline</h4>
+                                <div id="uplineTree">
+                                    <div class="text-center py-3">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading upline...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h4><i class="fas fa-arrow-down me-2"></i>Your Downline</h4>
+                                <div id="downlineTree">
+                                    <div class="text-center py-3">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading downline...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tools Tab -->
+                <div class="tab-pane fade" id="tools" role="tabpanel">
+                    <div class="mt-4">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5><i class="fas fa-link me-2"></i>Referral Links</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label class="form-label">Your Referral Link:</label>
+                                            <div class="input-group">
+                                                <input type="text" class="form-control referral-link" id="referralLink" readonly>
+                                                <button class="btn btn-outline-secondary" onclick="copyReferralLink()">
+                                                    <i class="fas fa-copy"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Your Referral Code:</label>
+                                            <div class="input-group">
+                                                <input type="text" class="form-control text-center" id="referralCodeCopy" readonly>
+                                                <button class="btn btn-outline-secondary" onclick="copyReferralCode()">
+                                                    <i class="fas fa-copy"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5><i class="fas fa-calculator me-2"></i>Commission Calculator</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label for="saleAmount" class="form-label">Sale Amount ($)</label>
+                                            <input type="number" 
+                                                   class="form-control" 
+                                                   id="saleAmount" 
+                                                   placeholder="Enter sale amount"
+                                                   min="0"
+                                                   step="0.01"
+                                                   onchange="calculateCommission()">
+                                        </div>
+                                        <div id="commissionPreview"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Sale Modal -->
+    <div class="modal fade" id="newSaleModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Record New Sale</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="newSaleForm">
+                        <div class="mb-3">
+                            <label for="saleReference" class="form-label">Sale Reference *</label>
+                            <input type="text" class="form-control" id="saleReference" required>
+                            <div class="form-text">Unique identifier for this sale (e.g., invoice number)</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="modalSaleAmount" class="form-label">Sale Amount ($) *</label>
+                            <input type="number" class="form-control" id="modalSaleAmount" required min="0" step="0.01">
+                        </div>
+                        <div class="mb-3">
+                            <label for="paymentMethod" class="form-label">Payment Method *</label>
+                            <select class="form-select" id="paymentMethod" required>
+                                <option value="">Select payment method</option>
+                                <option value="ONLINE">Online Payment</option>
+                                <option value="BANK_TRANSFER">Bank Transfer</option>
+                                <option value="CASH">Cash</option>
+                                <option value="OTHER">Other</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="customerEmail" class="form-label">Customer Email (Optional)</label>
+                            <input type="email" class="form-control" id="customerEmail">
+                        </div>
+                        <div class="mb-3">
+                            <label for="paymentDetails" class="form-label">Payment Details</label>
+                            <textarea class="form-control" id="paymentDetails" rows="3" 
+                                      placeholder="Additional payment information, proof of payment, etc."></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="submitNewSale()">
+                        <i class="fas fa-save me-1"></i>Record Sale
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/src/js/auth.js"></script>
+    <script>
+        let currentUser = null;
+        let affiliateData = null;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                currentUser = getCurrentUser();
+                if (!currentUser) {
+                    window.location.href = '/';
+                    return;
+                }
+                
+                await loadAffiliateDashboard();
+            } catch (error) {
+                console.error('Dashboard initialization error:', error);
+                showError('Failed to initialize dashboard');
+            }
+        });
+        
+        // Load affiliate dashboard data
+        async function loadAffiliateDashboard() {
+            try {
+                const response = await fetch(`/api/affiliate/dashboard/${currentUser.sub}`, {
+                    headers: { 'Authorization': `Bearer ${getToken()}` }
+                });
+                
+                if (response.status === 404) {
+                    // User is not an affiliate
+                    showNotAffiliateState();
+                    return;
+                }
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load dashboard');
+                }
+                
+                affiliateData = await response.json();
+                showDashboard();
+                
+            } catch (error) {
+                console.error('Load dashboard error:', error);
+                showError(error.message);
+            }
+        }
+        
+        // Show not affiliate state
+        function showNotAffiliateState() {
+            document.getElementById('loadingState').classList.add('d-none');
+            document.getElementById('notAffiliateState').classList.remove('d-none');
+        }
+        
+        // Show main dashboard
+        function showDashboard() {
+            document.getElementById('loadingState').classList.add('d-none');
+            document.getElementById('dashboardContent').classList.remove('d-none');
+            
+            // Populate affiliate info
+            document.getElementById('affiliateName').textContent = affiliateData.affiliate.name;
+            document.getElementById('referralCode').textContent = affiliateData.affiliate.referral_code;
+            document.getElementById('totalEarnings').textContent = affiliateData.affiliate.total_earnings.toFixed(2);
+            document.getElementById('availableBalance').textContent = affiliateData.affiliate.available_balance.toFixed(2);
+            document.getElementById('pendingBalance').textContent = affiliateData.affiliate.pending_balance.toFixed(2);
+            document.getElementById('totalSales').textContent = affiliateData.sales.total_count;
+            document.getElementById('directReferrals').textContent = affiliateData.affiliate.direct_referrals;
+            
+            // Set referral tools
+            const referralLink = `${window.location.origin}/?ref=${affiliateData.affiliate.referral_code}`;
+            document.getElementById('referralLink').value = referralLink;
+            document.getElementById('referralCodeCopy').value = affiliateData.affiliate.referral_code;
+            
+            // Populate recent sales
+            populateRecentSales(affiliateData.recent_sales);
+            
+            // Populate recent commissions
+            populateRecentCommissions(affiliateData.recent_commissions);
+        }
+        
+        // Register as affiliate
+        async function registerAffiliate() {
+            const parentReferralCode = document.getElementById('parentReferralCode').value.trim();
+            
+            try {
+                const response = await fetch('/api/affiliate/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getToken()}`
+                    },
+                    body: JSON.stringify({
+                        user_id: currentUser.sub,
+                        parent_referral_code: parentReferralCode || null
+                    })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message);
+                }
+                
+                // Reload dashboard
+                await loadAffiliateDashboard();
+                
+            } catch (error) {
+                console.error('Registration error:', error);
+                alert('Registration failed: ' + error.message);
+            }
+        }
+        
+        // Populate recent sales
+        function populateRecentSales(sales) {
+            const container = document.getElementById('recentSalesList');
+            
+            if (!sales || sales.length === 0) {
+                return; // Keep default empty state
+            }
+            
+            container.innerHTML = sales.map(sale => `
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <div>
+                        <strong>${sale.sale_reference}</strong>
+                        <br><small class="text-muted">${new Date(sale.created_at).toLocaleDateString()}</small>
+                    </div>
+                    <div class="text-end">
+                        <div class="fw-bold">$${parseFloat(sale.sale_amount).toFixed(2)}</div>
+                        <span class="badge bg-${sale.verification_status === 'VERIFIED' ? 'success' : sale.verification_status === 'PENDING' ? 'warning' : 'danger'}">
+                            ${sale.verification_status}
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Populate recent commissions
+        function populateRecentCommissions(commissions) {
+            const container = document.getElementById('recentCommissionsList');
+            
+            if (!commissions || commissions.length === 0) {
+                return; // Keep default empty state
+            }
+            
+            container.innerHTML = commissions.map(commission => `
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <div>
+                        <strong>Level ${commission.level}</strong> (${commission.commission_rate}%)
+                        <br><small class="text-muted">${commission.sale_reference}</small>
+                    </div>
+                    <div class="text-end">
+                        <div class="fw-bold">$${parseFloat(commission.commission_amount).toFixed(2)}</div>
+                        <span class="badge bg-${commission.status === 'PAID' ? 'success' : commission.status === 'PENDING' ? 'warning' : 'secondary'}">
+                            ${commission.status}
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Submit new sale
+        async function submitNewSale() {
+            const form = document.getElementById('newSaleForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+            
+            const data = {
+                sale_reference: document.getElementById('saleReference').value,
+                sale_amount: parseFloat(document.getElementById('modalSaleAmount').value),
+                payment_method: document.getElementById('paymentMethod').value,
+                customer_email: document.getElementById('customerEmail').value || null,
+                payment_details: document.getElementById('paymentDetails').value || null
+            };
+            
+            try {
+                const response = await fetch(`/api/affiliate/sales/${currentUser.sub}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getToken()}`
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message);
+                }
+                
+                const result = await response.json();
+                
+                // Show success message
+                alert('Sale recorded successfully! It will be reviewed by an admin.');
+                
+                // Close modal and reset form
+                bootstrap.Modal.getInstance(document.getElementById('newSaleModal')).hide();
+                form.reset();
+                
+                // Reload dashboard
+                await loadAffiliateDashboard();
+                
+            } catch (error) {
+                console.error('Submit sale error:', error);
+                alert('Failed to record sale: ' + error.message);
+            }
+        }
+        
+        // Calculate commission preview
+        async function calculateCommission() {
+            const amount = parseFloat(document.getElementById('saleAmount').value);
+            if (!amount || amount <= 0) {
+                document.getElementById('commissionPreview').innerHTML = '';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/affiliate/commission-preview/${currentUser.sub}?sale_amount=${amount}`, {
+                    headers: { 'Authorization': `Bearer ${getToken()}` }
+                });
+                
+                if (!response.ok) return;
+                
+                const preview = await response.json();
+                
+                let html = '<div class="commission-preview">';
+                html += `<h6>Commission Preview for $${amount}</h6>`;
+                html += `<div class="row">`;
+                html += `<div class="col-6"><strong>Total Commission:</strong></div>`;
+                html += `<div class="col-6 text-end">$${preview.total_commission_amount.toFixed(2)} (${preview.total_commission_rate}%)</div>`;
+                html += `</div>`;
+                
+                if (preview.commissions && preview.commissions.length > 0) {
+                    html += '<hr><small class="text-muted">Breakdown:</small>';
+                    preview.commissions.forEach(comm => {
+                        const levelText = comm.level === 0 ? 'Direct Sale' : `Level ${comm.level}`;
+                        html += `<div class="row small">`;
+                        html += `<div class="col-6">${levelText} (${comm.commission_rate}%)</div>`;
+                        html += `<div class="col-6 text-end">$${comm.commission_amount.toFixed(2)}</div>`;
+                        html += `</div>`;
+                    });
+                }
+                
+                html += '</div>';
+                
+                document.getElementById('commissionPreview').innerHTML = html;
+                
+            } catch (error) {
+                console.error('Commission preview error:', error);
+            }
+        }
+        
+        // Copy referral link
+        function copyReferralLink() {
+            const input = document.getElementById('referralLink');
+            input.select();
+            document.execCommand('copy');
+            
+            // Show toast or temp feedback
+            const btn = event.target.closest('button');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i>';
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+            }, 1000);
+        }
+        
+        // Copy referral code
+        function copyReferralCode() {
+            const input = document.getElementById('referralCodeCopy');
+            input.select();
+            document.execCommand('copy');
+            
+            // Show toast or temp feedback
+            const btn = event.target.closest('button');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i>';
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+            }, 1000);
+        }
+        
+        // Show error state
+        function showError(message) {
+            document.getElementById('loadingState').classList.add('d-none');
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorState').classList.remove('d-none');
+        }
+        
+        // Load tab content on demand
+        document.getElementById('dashboardTabs').addEventListener('shown.bs.tab', function (event) {
+            const tabId = event.target.getAttribute('data-bs-target');
+            
+            if (tabId === '#sales') {
+                loadSales();
+            } else if (tabId === '#commissions') {
+                loadCommissions();
+            } else if (tabId === '#network') {
+                loadNetwork();
+            }
+        });
+        
+        // Load sales tab
+        async function loadSales() {
+            try {
+                const response = await fetch(`/api/affiliate/sales/${currentUser.sub}`, {
+                    headers: { 'Authorization': `Bearer ${getToken()}` }
+                });
+                
+                if (!response.ok) return;
+                
+                const data = await response.json();
+                const container = document.getElementById('salesList');
+                
+                if (!data.data || data.data.length === 0) {
+                    container.innerHTML = '<div class="text-center text-muted py-4">No sales recorded yet</div>';
+                    return;
+                }
+                
+                container.innerHTML = data.data.map(sale => `
+                    <div class="row border-bottom py-3">
+                        <div class="col-md-3">
+                            <strong>${sale.sale_reference}</strong>
+                            <br><small class="text-muted">${new Date(sale.created_at).toLocaleDateString()}</small>
+                        </div>
+                        <div class="col-md-2">
+                            <strong>$${parseFloat(sale.sale_amount).toFixed(2)}</strong>
+                        </div>
+                        <div class="col-md-2">
+                            ${sale.payment_method}
+                        </div>
+                        <div class="col-md-2">
+                            <span class="badge bg-${sale.verification_status === 'VERIFIED' ? 'success' : sale.verification_status === 'PENDING' ? 'warning' : 'danger'}">
+                                ${sale.verification_status}
+                            </span>
+                        </div>
+                        <div class="col-md-3">
+                            ${sale.commissions_paid ? 
+                                '<span class="badge bg-success">Commissions Paid</span>' : 
+                                '<span class="badge bg-secondary">Pending Payment</span>'
+                            }
+                        </div>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                console.error('Load sales error:', error);
+            }
+        }
+        
+        // Load commissions tab
+        async function loadCommissions() {
+            try {
+                const response = await fetch(`/api/affiliate/commissions/${currentUser.sub}`, {
+                    headers: { 'Authorization': `Bearer ${getToken()}` }
+                });
+                
+                if (!response.ok) return;
+                
+                const data = await response.json();
+                const container = document.getElementById('commissionsList');
+                
+                if (!data.data || data.data.length === 0) {
+                    container.innerHTML = '<div class="text-center text-muted py-4">No commissions earned yet</div>';
+                    return;
+                }
+                
+                container.innerHTML = data.data.map(commission => `
+                    <div class="row border-bottom py-3">
+                        <div class="col-md-3">
+                            <strong>${commission.sale_reference}</strong>
+                            <br><small class="text-muted">Level ${commission.level}</small>
+                        </div>
+                        <div class="col-md-2">
+                            ${commission.commission_rate}%
+                        </div>
+                        <div class="col-md-2">
+                            <strong>$${parseFloat(commission.commission_amount).toFixed(2)}</strong>
+                        </div>
+                        <div class="col-md-2">
+                            <span class="badge bg-${commission.status === 'PAID' ? 'success' : commission.status === 'PENDING' ? 'warning' : 'secondary'}">
+                                ${commission.status}
+                            </span>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">
+                                ${new Date(commission.created_at).toLocaleDateString()}
+                            </small>
+                        </div>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                console.error('Load commissions error:', error);
+            }
+        }
+        
+        // Load network tab
+        async function loadNetwork() {
+            try {
+                // Load upline
+                const uplineResponse = await fetch(`/api/affiliate/network/${currentUser.sub}?type=upline`, {
+                    headers: { 'Authorization': `Bearer ${getToken()}` }
+                });
+                
+                if (uplineResponse.ok) {
+                    const uplineData = await uplineResponse.json();
+                    const uplineContainer = document.getElementById('uplineTree');
+                    
+                    if (!uplineData.tree || uplineData.tree.length === 0) {
+                        uplineContainer.innerHTML = '<div class="text-center text-muted py-3">No upline</div>';
+                    } else {
+                        uplineContainer.innerHTML = uplineData.tree.map((affiliate, index) => `
+                            <div class="tree-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>${affiliate.name}</strong>
+                                        <br><small class="text-muted">${affiliate.referral_code}</small>
+                                    </div>
+                                    <span class="level-indicator">Level ${index + 1}</span>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                }
+                
+                // Load downline
+                const downlineResponse = await fetch(`/api/affiliate/network/${currentUser.sub}?type=downline`, {
+                    headers: { 'Authorization': `Bearer ${getToken()}` }
+                });
+                
+                if (downlineResponse.ok) {
+                    const downlineData = await downlineResponse.json();
+                    const downlineContainer = document.getElementById('downlineTree');
+                    
+                    if (!downlineData.tree || downlineData.tree.length === 0) {
+                        downlineContainer.innerHTML = '<div class="text-center text-muted py-3">No downline yet</div>';
+                    } else {
+                        downlineContainer.innerHTML = downlineData.tree.map(affiliate => `
+                            <div class="tree-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>${affiliate.name}</strong>
+                                        <br><small class="text-muted">${affiliate.referral_code}</small>
+                                    </div>
+                                    <span class="level-indicator">Level ${affiliate.level}</span>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Load network error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

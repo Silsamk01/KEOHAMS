@@ -8,13 +8,15 @@ const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
-const { notFound, errorHandler } = require('./middlewares/error');
+const { notFound, errorHandler: legacyErrorHandler } = require('./middlewares/error');
+const { errorHandler, attachErrorResponders } = require('./utils/errorResponse');
 const authRoutes = require('./routes/auth');
 const categoryRoutes = require('./routes/categories');
 const productRoutes = require('./routes/products');
 const healthRoutes = require('./routes/health');
 const adminRoutes = require('./routes/admin');
 const blogRoutes = require('./routes/blog');
+const publicBlogRoutes = require('./routes/publicBlog');
 const ordersRoutes = require('./routes/orders');
 const quotationsRoutes = require('./routes/quotations');
 const notificationsRoutes = require('./routes/notifications');
@@ -27,7 +29,8 @@ const adminNotifReadRoutes = require('./routes/adminNotificationReads');
 const verificationRoutes = require('./routes/verification');
 const adminVerificationRoutes = require('./routes/adminVerification');
 const enhancedKYCRoutes = require('./routes/enhancedKYC');
-const { cache } = require('./middlewares/cache');
+const affiliateRoutes = require('./routes/affiliate');
+const { cache } = require('./middlewares/redisCache'); // Use Redis-based cache
 const { tryAuth } = require('./middlewares/auth');
 
 const app = express();
@@ -54,6 +57,7 @@ app.use(
 				'https://cdn.jsdelivr.net',
 				'https://fonts.googleapis.com',
 				'https://fonts.gstatic.com',
+				'https://cdnjs.cloudflare.com',
 				'ws:',
 				'wss:'
 			],
@@ -61,13 +65,17 @@ app.use(
 			scriptSrc: [
 				"'self'",
 				"'unsafe-inline'",
+				"'unsafe-eval'", // Required for some libraries
 				'https://cdn.jsdelivr.net'
 			],
+			// Allow inline event handlers for onclick, onload, etc.
+			scriptSrcAttr: ["'unsafe-inline'"],
 			styleSrc: [
 				"'self'",
 				"'unsafe-inline'", // allow inline style attributes used in pages
 				'https://cdn.jsdelivr.net',
-				'https://fonts.googleapis.com'
+				'https://fonts.googleapis.com',
+				'https://cdnjs.cloudflare.com'
 			],
 			imgSrc: [
 				"'self'",
@@ -79,6 +87,7 @@ app.use(
 			fontSrc: [
 				"'self'",
 				'https://fonts.gstatic.com',
+				'https://cdnjs.cloudflare.com',
 				'data:'
 			],
 			objectSrc: ["'none'"],
@@ -97,6 +106,8 @@ app.use(compression({ threshold: 1024 })); // compress responses >1KB
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 // Attach user if token present but do not require
 app.use(tryAuth);
+// Attach standardized error response helpers
+app.use(attachErrorResponders);
 
 // Rate limits (basic & targeted)
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 100 });
@@ -113,7 +124,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/categories', cache(5 * 60 * 1000), categoryRoutes); // 5 min
 app.use('/api/products', cache(30 * 1000), productRoutes); // 30s (list pagination still dynamic via query cache key)
 app.use('/api/admin', adminRoutes);
-app.use('/api/blog', cache(60 * 1000), blogRoutes);
+app.use('/api/blog', cache(60 * 1000), blogRoutes); // Authenticated blog (private portal)
+app.use('/api/public/blog', cache(2 * 60 * 1000), publicBlogRoutes); // Public blog (no auth, public DB)
 app.use('/api/orders', ordersRoutes);
 app.use('/api/quotations', quotationsRoutes);
 app.use('/api/notifications', notificationsRoutes);
@@ -126,6 +138,7 @@ app.use('/api/admin/notification-read-events', adminNotifReadRoutes);
 app.use('/api/verification', verificationRoutes);
 app.use('/api/admin/verification', adminVerificationRoutes);
 app.use('/api/kyc/enhanced', enhancedKYCRoutes);
+app.use('/api/affiliate', affiliateRoutes);
 
 // Static for uploaded media (support both backend/uploads and backend/src/uploads just in case)
 const uploadsPrimary = path.join(__dirname, '..', 'uploads');
@@ -255,6 +268,9 @@ app.get('/chat', (req, res) => {
 app.get('/blog', (req, res) => {
 	res.sendFile(path.join(frontendPages, 'blog.html'));
 });
+app.get('/blog-public', (req, res) => {
+	res.sendFile(path.join(frontendPages, 'blog-public.html'));
+});
 app.get('/blog/:slug', (req, res) => {
 	res.sendFile(path.join(frontendPages, 'blog-post.html'));
 });
@@ -276,6 +292,28 @@ app.get('/kyc-enhanced', (req, res) => {
 		'Expires': '0'
 	});
 	res.sendFile(path.join(frontendPages, 'kyc-enhanced.html'));
+});
+
+// Affiliate Routes
+app.get('/affiliate-dashboard', (req, res) => {
+	res.set({
+		'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+		'Pragma': 'no-cache',
+		'Expires': '0'
+	});
+	res.sendFile(path.join(frontendPages, 'affiliate-dashboard.html'));
+});
+
+app.get('/affiliate-register', (req, res) => {
+	res.sendFile(path.join(frontendPages, 'affiliate-register.html'));
+});
+
+app.get('/affiliate-login', (req, res) => {
+	res.sendFile(path.join(frontendPages, 'affiliate-login.html'));
+});
+
+app.get('/affiliate-forgot-password', (req, res) => {
+	res.sendFile(path.join(frontendPages, 'affiliate-forgot-password.html'));
 });
 
 // (no user dashboard route)

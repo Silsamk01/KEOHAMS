@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:4000/api';
+import { API_BASE } from './config.js';
 
 function getToken() { return localStorage.getItem('token'); }
 function authHeaders() {
@@ -822,7 +822,7 @@ function escapeHtml(s='') {
 // =========================
 // Blog Management (Admin)
 // =========================
-const BLOG_API = 'http://localhost:4000/api/blog/admin';
+const BLOG_API = `${API_BASE}/blog/admin`;
 let blogState = { q:'', category:'', page:1, pageSize:50 };
 
 async function blogFetch(url, opts={}){
@@ -1041,6 +1041,10 @@ function wireAdminNotifs(){
     if (document.getElementById('pane-notifs')) {
       wireAdminNotifs();
       loadAdminNotifs();
+    }
+    // Initialize blog if blog pane exists
+    if (document.getElementById('pane-blog')) {
+      wireBlog();
     }
     // Hydrate persisted notification read activity
     hydrateNotifReadEvents();

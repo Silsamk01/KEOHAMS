@@ -1,8 +1,7 @@
 import { initChatWidget } from './chat.js';
 import { fetchMyThreads, openExistingThread } from './chat.js';
 import { initQuotationsUI } from './quotations.js';
-
-const API_BASE = 'http://localhost:4000/api';
+import { API_BASE, WS_BASE } from './config.js';
 
 // Ensure unread notification refresh when marking notifications read
 async function fetchNotifUnread(){
@@ -73,6 +72,11 @@ function authHeaders() {
 
 async function fetchJSON(url, opts={}) {
   const res = await fetch(url, { ...opts, headers: { ...(opts.headers||{}), ...authHeaders() } });
+  if (res.status === 401 || res.status === 403) {
+    try { localStorage.removeItem('token'); } catch(_){ }
+    // Surface a consistent error; caller can show a message
+    throw new Error('Please sign in to view this content.');
+  }
   if (!res.ok) throw new Error((await res.text()) || `HTTP ${res.status}`);
   return res.json();
 }
@@ -94,6 +98,15 @@ function switchPane(id) {
       // blog-modern.js auto-inits on presence of elements
     } else if (id === '#pane-shop') {
       // shop.js auto-inits on presence of elements
+    } else if (id === '#pane-chats') {
+      // Load chat threads when chats pane is opened
+      loadDashChatThreads();
+    } else if (id === '#pane-quotations') {
+      // Force load quotations when pane is opened
+      try { 
+        const { loadQuotations } = window.quotationsModule || {};
+        if (loadQuotations) loadQuotations(true);
+      } catch(_){ }
     }
   } catch(_){ }
 
@@ -160,7 +173,13 @@ async function loadDashNotifs(){
         catch(e){ alert(e.message||'Failed'); }
       });
     });
-  } catch(_){ }
+  } catch(e){
+    const list = document.getElementById('dashNotifList');
+    if (list) {
+      const msg = e?.message || 'Failed to load notifications';
+      list.innerHTML = `<div class="alert alert-warning">${msg}</div>`;
+    }
+  }
 }
 
 function renderCartBadge(){
@@ -382,7 +401,7 @@ window.__chatThreadUpdate = function updateThreadMeta(payload){
     if (window.io) {
       const t = getToken();
       if (t) {
-        const s = window.io('http://localhost:4000', { auth: { token: t } });
+        const s = window.io(WS_BASE, { auth: { token: t } });
   s.on('notif:new', ()=>{ loadDashNotifs(); });
       }
     }
@@ -400,4 +419,7 @@ window.__chatThreadUpdate = function updateThreadMeta(payload){
   // Chat FAB should open chats pane instead of directly modal
   const fab = document.getElementById('chatFab');
   if (fab) fab.addEventListener('click', (e)=>{ e.preventDefault(); switchPane('#pane-chats'); loadDashChatThreads(); });
+  // Wire chats refresh button
+  const chatsRefresh = document.getElementById('dashChatsRefresh');
+  if (chatsRefresh) chatsRefresh.addEventListener('click', ()=> loadDashChatThreads());
 })();
