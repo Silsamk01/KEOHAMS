@@ -193,11 +193,21 @@
                     return;
                 }
                 
-                // Redirect to affiliate dashboard
-                showAlert('Login successful! Redirecting...', 'success');
-                setTimeout(() => {
-                    window.location.href = '/affiliate-dashboard';
-                }, 1000);
+                // Check for redirect URL
+                const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
+                if (redirectUrl && redirectUrl.includes('/affiliate')) {
+                    sessionStorage.removeItem('redirectAfterLogin');
+                    showAlert('Login successful! Redirecting...', 'success');
+                    setTimeout(() => {
+                        window.location.href = redirectUrl;
+                    }, 1000);
+                } else {
+                    // Redirect to affiliate dashboard
+                    showAlert('Login successful! Redirecting...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/affiliate-dashboard';
+                    }, 1000);
+                }
                 
             } catch (error) {
                 showAlert(error.message, 'danger');
@@ -288,11 +298,21 @@
                 localStorage.setItem('token', data.token);
                 sessionStorage.removeItem('tempSession');
                 
-                // Redirect to dashboard
-                showAlert('Verification successful! Redirecting...', 'success');
-                setTimeout(() => {
-                    window.location.href = '/affiliate-dashboard';
-                }, 1000);
+                // Check for redirect URL
+                const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
+                if (redirectUrl && redirectUrl.includes('/affiliate')) {
+                    sessionStorage.removeItem('redirectAfterLogin');
+                    showAlert('Verification successful! Redirecting...', 'success');
+                    setTimeout(() => {
+                        window.location.href = redirectUrl;
+                    }, 1000);
+                } else {
+                    // Redirect to dashboard
+                    showAlert('Verification successful! Redirecting...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/affiliate-dashboard';
+                    }, 1000);
+                }
                 
             } catch (error) {
                 showAlert(error.message, 'danger');

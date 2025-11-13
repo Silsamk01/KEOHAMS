@@ -10,13 +10,12 @@ router.get('/', asyncHandler(ctrl.list));
 router.get('/slug/:slug', asyncHandler(ctrl.getBySlug));
 
 // Admin endpoints
-router.use('/admin', requireAuth, requireRole('ADMIN'));
-router.get('/admin', asyncHandler(ctrl.adminList));
-router.post('/admin', asyncHandler(ctrl.create));
-router.patch('/admin/:id', asyncHandler(ctrl.update));
-router.post('/admin/:id/publish', asyncHandler(ctrl.publish));
-router.post('/admin/:id/unpublish', asyncHandler(ctrl.unpublish));
-router.delete('/admin/:id', asyncHandler(ctrl.remove));
+router.get('/admin', requireAuth, requireRole('ADMIN'), asyncHandler(ctrl.adminList));
+router.post('/admin', requireAuth, requireRole('ADMIN'), asyncHandler(ctrl.create));
+router.patch('/admin/:id', requireAuth, requireRole('ADMIN'), asyncHandler(ctrl.update));
+router.post('/admin/:id/publish', requireAuth, requireRole('ADMIN'), asyncHandler(ctrl.publish));
+router.post('/admin/:id/unpublish', requireAuth, requireRole('ADMIN'), asyncHandler(ctrl.unpublish));
+router.delete('/admin/:id', requireAuth, requireRole('ADMIN'), asyncHandler(ctrl.remove));
 
 // Admin sync control endpoints
 router.get('/admin/sync/stats', asyncHandler(syncCtrl.getSyncStats));

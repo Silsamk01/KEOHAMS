@@ -42,7 +42,12 @@ async function adminList(req, res) {
   const q = (req.query.q || '').trim() || undefined;
   const category = (req.query.category || '').trim() || undefined;
   const items = await Blog.listAll({ page, pageSize, q, category });
-  res.json(items);
+  
+  // Attach tags to all items
+  const itemsWithTags = await Blog.attachTags(items);
+  
+  // Return array directly for backwards compatibility with admin.js
+  res.json(itemsWithTags);
 }
 
 async function create(req, res) {

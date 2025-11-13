@@ -113,7 +113,7 @@ initTheme();
 // Prevent accessing protected pages via back button after sign-out (including BFCache restores)
 window.addEventListener('pageshow', (event)=>{
   const token = getToken();
-  const protectedPaths = ['/dashboard','/shop','/blog','/chat','/settings','/notifications','/cart'];
+  const protectedPaths = ['/dashboard','/shop','/blog','/chat','/settings','/notifications','/cart','/affiliate-dashboard'];
   const path = location.pathname.replace(/\/$/,'');
   if(!token && protectedPaths.includes(path)){
     // If page restored from BFCache or standard back navigation without token, force redirect

@@ -87,10 +87,20 @@ async function loadNext(){
     if (searchTerm) params.set('q', searchTerm);
     if (categoryFilter) params.set('category', categoryFilter);
     const data = await fetchJSON(`${API_BASE}/blog?${params.toString()}`);
-    hasMore = data.hasMore;
-    posts = posts.concat(data.data);
+    
+    // Handle both direct array and {data, hasMore} response formats
+    if (Array.isArray(data)) {
+      hasMore = data.length === pageSize;
+      posts = posts.concat(data);
+    } else {
+      hasMore = data.hasMore || false;
+      posts = posts.concat(data.data || []);
+    }
     page += 1;
-  } catch(e){ console.error('Failed to load page', e); }
+  } catch(e){ 
+    console.error('Failed to load page', e); 
+    hasMore = false;
+  }
   finally {
     skeletonWrapper.remove();
     render();

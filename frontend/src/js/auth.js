@@ -49,4 +49,75 @@ async function register(payload) {
   return true;
 }
 
-export { saveToken, getToken, clearToken, me, login, verifySecondFactor, register };
+// Get current user from token
+function getCurrentUser() {
+  const token = getToken();
+  if (!token) return null;
+  
+  try {
+    // Decode JWT token to get user info
+    const payload = token.split('.')[1];
+    const decoded = JSON.parse(atob(payload));
+    return decoded;
+  } catch (error) {
+    console.error('Error decoding token:', error);
+    return null;
+  }
+}
+
+// Check if user is authenticated
+function isAuthenticated() {
+  return !!getToken();
+}
+
+// Logout function
+function logout() {
+  clearToken();
+  window.location.href = '/';
+}
+
+// Require authentication - redirect if not logged in
+function requireAuth(redirectTo = '/') {
+  if (!isAuthenticated()) {
+    // Store the current page to redirect back after login
+    sessionStorage.setItem('redirectAfterLogin', window.location.href);
+    window.location.href = redirectTo;
+    return false;
+  }
+  return true;
+}
+
+// Check if user is admin
+async function isAdmin() {
+  try {
+    const user = await me();
+    return user && user.role === 'admin';
+  } catch {
+    return false;
+  }
+}
+
+// Require admin role
+async function requireAdmin(redirectTo = '/') {
+  if (!await isAdmin()) {
+    window.location.href = redirectTo;
+    return false;
+  }
+  return true;
+}
+
+export { 
+  saveToken, 
+  getToken, 
+  clearToken, 
+  me, 
+  login, 
+  verifySecondFactor, 
+  register,
+  getCurrentUser,
+  isAuthenticated,
+  logout,
+  requireAuth,
+  isAdmin,
+  requireAdmin
+};

@@ -348,10 +348,20 @@ if (twofaForm) {
 	hydrateProducts(true);
 		updateCartBadge();
 		window.addEventListener('cart:changed', updateCartBadge);
-	if (location.hash === '#signin' && els.navSignInLink) {
+	
+	// Handle sign-in redirects from protected pages
+	const urlParams = new URLSearchParams(window.location.search);
+	if (urlParams.get('signin') === '1' || location.hash === '#signin') {
+		history.replaceState('', document.title, window.location.pathname);
+		setTimeout(async () => { 
+			await preloadCaptcha('signin'); 
+			new bootstrap.Modal(els.signinModal).show(); 
+		}, 100);
+	} else if (location.hash === '#signin' && els.navSignInLink) {
 		history.replaceState('', document.title, window.location.pathname + window.location.search);
 		setTimeout(async () => { await preloadCaptcha('signin'); new bootstrap.Modal(els.signinModal).show(); }, 100);
 	}
+	
 	// Guard against back navigation showing authed UI when not signed in
 	window.addEventListener('pageshow', function(event){
 		const token = getToken?.();

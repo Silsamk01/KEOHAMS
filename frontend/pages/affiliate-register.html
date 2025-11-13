@@ -441,6 +441,16 @@
                 // Store token in localStorage
                 localStorage.setItem('token', authToken);
                 
+                // Check for redirect URL
+                const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
+                if (redirectUrl && redirectUrl.includes('/affiliate')) {
+                    sessionStorage.removeItem('redirectAfterLogin');
+                    // Auto-redirect after 2 seconds
+                    setTimeout(() => {
+                        window.location.href = redirectUrl;
+                    }, 2000);
+                }
+                
             } catch (error) {
                 showAlert(error.message, 'danger');
                 btn.disabled = false;

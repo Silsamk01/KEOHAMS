@@ -840,15 +840,15 @@ async function loadAdminBlog(){
     const list = document.getElementById('adminBlogList');
     if (!list) return;
     if (!Array.isArray(items) || !items.length){
-      list.innerHTML = '<div class="text-muted small">No posts</div>';
+      list.innerHTML = '<div class="text-muted small">No posts yet. Create your first blog post above!</div>';
       return;
     }
     list.innerHTML = items.map(p=>renderAdminBlogRow(p)).join('');
     wireAdminBlogRow(list);
   } catch(e){
-    console.error(e);
+    console.error('Blog load error:', e);
     const list = document.getElementById('adminBlogList');
-    if (list) list.innerHTML = '<div class="text-danger">Failed to load posts.</div>';
+    if (list) list.innerHTML = `<div class="alert alert-danger">Failed to load posts: ${e.message}</div>`;
   }
 }
 
@@ -1045,6 +1045,21 @@ function wireAdminNotifs(){
     // Initialize blog if blog pane exists
     if (document.getElementById('pane-blog')) {
       wireBlog();
+      // Load blog posts immediately if tab is visible
+      const blogTab = document.getElementById('tab-blog');
+      const blogPane = document.getElementById('pane-blog');
+      if (blogTab && blogPane) {
+        // Listen for blog tab activation
+        blogTab.addEventListener('shown.bs.tab', () => {
+          console.log('Blog tab shown, loading posts...');
+          loadAdminBlog();
+        });
+        // Check if blog tab is already active on page load
+        if (blogTab.classList.contains('active') || blogPane.classList.contains('active') || blogPane.classList.contains('show')) {
+          console.log('Blog tab already active, loading posts...');
+          setTimeout(() => loadAdminBlog(), 100);
+        }
+      }
     }
     // Hydrate persisted notification read activity
     hydrateNotifReadEvents();

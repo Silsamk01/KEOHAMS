@@ -39,8 +39,39 @@
   <style>
 
   </style>
-  <script>
-    if (!localStorage.getItem('token')) { window.location.href='/?#signin'; }
+  <script type="module">
+    // Authentication Guard
+    import { requireAuth, getToken, getCurrentUser } from '/src/js/auth.js';
+    
+    // Check authentication before page loads
+    if (!requireAuth('/?signin=1')) {
+      document.body.style.display = 'none';
+    }
+    
+    // Verify token is valid
+    (async () => {
+      try {
+        const token = getToken();
+        if (!token) {
+          window.location.href = '/?signin=1';
+          return;
+        }
+        
+        // Verify token with server
+        const response = await fetch('/api/auth/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!response.ok) {
+          localStorage.removeItem('token');
+          window.location.href = '/?signin=1';
+        }
+      } catch (error) {
+        console.error('Auth verification failed:', error);
+        localStorage.removeItem('token');
+        window.location.href = '/?signin=1';
+      }
+    })();
   </script>
   </head>
 <body>

@@ -450,26 +450,59 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/src/js/auth.js"></script>
-    <script>
+    <script type="module">
+        import { requireAuth, getToken, getCurrentUser, logout, isAuthenticated } from '/src/js/auth.js';
+        
+        // Authentication Guard - Execute immediately
+        if (!isAuthenticated()) {
+            sessionStorage.setItem('redirectAfterLogin', window.location.href);
+            window.location.href = '/affiliate-login';
+            throw new Error('Authentication required');
+        }
+        
         let currentUser = null;
         let affiliateData = null;
 
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', async () => {
             try {
+                // Double-check authentication
+                if (!requireAuth('/affiliate-login')) {
+                    return;
+                }
+                
                 currentUser = getCurrentUser();
                 if (!currentUser) {
-                    window.location.href = '/';
+                    sessionStorage.setItem('redirectAfterLogin', window.location.href);
+                    window.location.href = '/affiliate-login';
+                    return;
+                }
+                
+                // Verify token with server
+                const token = getToken();
+                const verifyResponse = await fetch('/api/auth/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!verifyResponse.ok) {
+                    logout();
+                    sessionStorage.setItem('redirectAfterLogin', window.location.href);
+                    window.location.href = '/affiliate-login';
                     return;
                 }
                 
                 await loadAffiliateDashboard();
             } catch (error) {
                 console.error('Dashboard initialization error:', error);
-                showError('Failed to initialize dashboard');
+                showError('Failed to initialize dashboard. Please try logging in again.');
+                setTimeout(() => {
+                    window.location.href = '/affiliate-login';
+                }, 2000);
             }
         });
+        
+        // Make logout function global
+        window.logout = logout;
         
         // Load affiliate dashboard data
         async function loadAffiliateDashboard() {
