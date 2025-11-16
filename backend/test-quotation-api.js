@@ -21,7 +21,7 @@ async function testAPI() {
   try {
     console.log('📡 Testing GET /api/quotations/mine...\n');
     
-    const response = await fetch('http://localhost:4000/api/quotations/mine?page=1&pageSize=25', {
+    const response = await fetch('http://localhost:3000/api/quotations/mine?page=1&pageSize=25', {
       headers: {
         'Authorization': `Bearer ${user11Token}`,
         'Accept': 'application/json'
@@ -55,7 +55,7 @@ async function testAPI() {
       const firstQuoId = data.data[0].id;
       console.log(`\n📡 Testing GET /api/quotations/mine/${firstQuoId}...\n`);
       
-      const detailResponse = await fetch(`http://localhost:4000/api/quotations/mine/${firstQuoId}`, {
+      const detailResponse = await fetch(`http://localhost:3000/api/quotations/mine/${firstQuoId}`, {
         headers: {
           'Authorization': `Bearer ${user11Token}`,
           'Accept': 'application/json'

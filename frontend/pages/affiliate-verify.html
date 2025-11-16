@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Email - KEOHAMS Affiliate</title>
+    <link rel="icon" type="image/jpeg" href="/keohamlogo.jpg">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        .verify-container {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+        .verify-icon {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            margin: 0 auto 2rem;
+        }
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+            margin: 2rem auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="verify-container">
+        <div id="loadingState">
+            <div class="verify-icon">
+                <i class="fas fa-envelope"></i>
+            </div>
+            <h2 class="mb-3">Verifying Your Email</h2>
+            <p class="text-muted mb-4">Please wait while we verify your email address...</p>
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+
+        <div id="successState" class="d-none">
+            <div class="verify-icon" style="background: #28a745;">
+                <i class="fas fa-check"></i>
+            </div>
+            <h2 class="mb-3 text-success">Email Verified!</h2>
+            <p class="mb-4">Your affiliate account has been successfully verified. You can now access your dashboard.</p>
+            <a href="/affiliate-dashboard" class="btn btn-primary btn-lg">
+                <i class="fas fa-tachometer-alt me-2"></i>Go to Dashboard
+            </a>
+        </div>
+
+        <div id="errorState" class="d-none">
+            <div class="verify-icon" style="background: #dc3545;">
+                <i class="fas fa-times"></i>
+            </div>
+            <h2 class="mb-3 text-danger">Verification Failed</h2>
+            <p class="mb-4" id="errorMessage">The verification link is invalid or has expired.</p>
+            <div class="d-grid gap-2">
+                <a href="/affiliate-register" class="btn btn-primary">
+                    <i class="fas fa-user-plus me-2"></i>Register Again
+                </a>
+                <a href="/affiliate-login" class="btn btn-outline-secondary">
+                    <i class="fas fa-sign-in-alt me-2"></i>Go to Login
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Get parameters from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const verified = urlParams.get('verified');
+        const authToken = urlParams.get('authToken');
+
+        // Check if already verified (redirected from server with success)
+        if (verified === 'true' && authToken) {
+            localStorage.setItem('token', authToken);
+            document.getElementById('loadingState').classList.add('d-none');
+            document.getElementById('successState').classList.remove('d-none');
+            setTimeout(() => {
+                window.location.href = '/affiliate-dashboard';
+            }, 2000);
+        } else if (!token) {
+            showError('No verification token provided.');
+        } else {
+            verifyEmail(token);
+        }
+
+        async function verifyEmail(token) {
+            try {
+                // Since server redirects, we need to navigate directly
+                window.location.href = `/api/affiliate/auth/verify-email?token=${token}`;
+            } catch (error) {
+                console.error('Verification error:', error);
+                showError(error.message);
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('loadingState').classList.add('d-none');
+            document.getElementById('errorState').classList.remove('d-none');
+            document.getElementById('errorMessage').textContent = message;
+        }
+    </script>
+</body>
+</html>
+

@@ -31,9 +31,14 @@ router.get('/affiliate/list', asyncHandler(ctrl.listAffiliates));
 router.get('/affiliate/:id/details', asyncHandler(ctrl.getAffiliateDetails));
 router.patch('/affiliate/:id/status', asyncHandler(ctrl.updateAffiliateStatus));
 
-// affiliate sales verification
+// affiliate sales management
 router.get('/affiliate/sales/pending', asyncHandler(ctrl.getPendingSales));
+router.get('/affiliate/sales/:id', asyncHandler(ctrl.getSaleDetails));
 router.post('/affiliate/sales/:id/verify', asyncHandler(ctrl.verifySale));
+router.post('/affiliate/sales/create', asyncHandler(ctrl.createAffiliateSale)); // Admin manually create sale
+
+// affiliate notifications
+router.post('/affiliate/notify', asyncHandler(ctrl.notifyAffiliates)); // Send notifications to affiliates
 
 // commission management
 router.get('/affiliate/commissions/unpaid', asyncHandler(ctrl.getUnpaidCommissions));
@@ -42,5 +47,21 @@ router.post('/affiliate/commissions/release', asyncHandler(ctrl.releaseCommissio
 // commission settings
 router.get('/affiliate/settings/commission', asyncHandler(ctrl.getCommissionSettings));
 router.put('/affiliate/settings/commission', asyncHandler(ctrl.updateCommissionSettings));
+
+// commission recalculation (destructive operation - use with caution)
+router.post('/affiliate/recalculate-commissions', asyncHandler(ctrl.recalculateAllCommissions));
+
+// withdrawal management
+router.get('/affiliate/withdrawals/pending', asyncHandler(ctrl.getPendingWithdrawals));
+router.get('/affiliate/withdrawals', asyncHandler(ctrl.listWithdrawals));
+router.get('/affiliate/withdrawals/:id', asyncHandler(ctrl.getWithdrawalDetails));
+router.post('/affiliate/withdrawals/:id/process', asyncHandler(ctrl.processWithdrawal));
+router.get('/affiliate/withdrawals/stats', asyncHandler(ctrl.getWithdrawalStats));
+
+// logs management
+const logsCtrl = require('../controllers/logsController');
+router.get('/logs', asyncHandler(logsCtrl.getLogs));
+router.get('/logs/download', asyncHandler(logsCtrl.downloadLogs));
+router.post('/logs/clear', asyncHandler(logsCtrl.clearOldLogs));
 
 module.exports = router;

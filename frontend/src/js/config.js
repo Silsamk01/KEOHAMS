@@ -7,7 +7,7 @@
 const getApiBase = () => {
   // Check if running in browser
   if (typeof window === 'undefined') {
-    return 'http://localhost:4000/api';
+    return 'http://localhost:3000/api';
   }
 
   const { protocol, hostname, port } = window.location;
@@ -25,7 +25,7 @@ const getApiBase = () => {
   }
 
   // Default development
-  return 'http://localhost:4000/api';
+  return 'http://localhost:3000/api';
 };
 
 // Export configuration

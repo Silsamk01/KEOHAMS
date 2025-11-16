@@ -4,6 +4,8 @@ const db = require('../config/db');
 const Users = require('../models/user');
 const { sign } = require('../utils/jwt');
 const { sendMail } = require('../utils/email');
+const { logActivity } = require('../services/activityLogger');
+const SecurityService = require('../services/securityService');
 
 // simple tokens table for email verification and password reset
 async function ensureTokensTable() {
@@ -23,13 +25,16 @@ async function ensureTokensTable() {
 const { verifyCaptcha } = require('../utils/captcha');
 
 exports.register = async (req, res) => {
-  let { name, email, password, phone, address, dob, captchaToken, captchaAnswer } = req.body;
+  let { name, email, password, phone, address, dob, captchaToken, captchaAnswer, referral_code } = req.body;
   if (!name || !email || !password || !dob) return res.status(400).json({ message: 'Missing fields' });
   // Basic normalization / trimming to reduce accidental whitespace & simple injection vectors
   name = String(name).trim();
   email = String(email).trim().toLowerCase();
   if (phone) phone = String(phone).trim();
   if (address) address = String(address).trim();
+  // Capture referral code from query param or body
+  referral_code = referral_code || req.query.ref || null;
+  if (referral_code) referral_code = String(referral_code).trim().toUpperCase();
 
   // Password complexity: at least 8 chars, one upper, one lower, one number, one symbol
   const complexity = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
@@ -53,7 +58,7 @@ exports.register = async (req, res) => {
   const token = crypto.randomBytes(24).toString('hex');
   const expires = new Date(Date.now() + 1000 * 60 * 60 * 24);
 
-  await db('pending_registrations').insert({ name, email, password_hash, phone, address, dob, token, expires_at: expires });
+  await db('pending_registrations').insert({ name, email, password_hash, phone, address, dob, referral_code, token, expires_at: expires });
   const verifyUrl = `${req.protocol}://${req.get('host')}/verify?token=${token}&flow=pending`;
   try {
     await sendMail({
@@ -74,11 +79,32 @@ exports.login = async (req, res) => {
   const { email, password, captchaToken, captchaAnswer, twofa_token, recovery_code } = req.body;
   if (!email || !password) return res.status(400).json({ message: 'Missing fields' });
   try { verifyCaptcha(captchaToken, captchaAnswer); } catch (e) { return res.status(400).json({ message: e.message }); }
+  
   const user = await Users.findByEmail(email);
-  if (!user) return res.status(401).json({ message: 'Invalid credentials' });
+  const ipAddress = req.ip || req.connection?.remoteAddress;
+  
+  if (!user) {
+    // Record failed login attempt
+    await SecurityService.recordLoginAttempt(email, ipAddress, false, 'User not found');
+    return res.status(401).json({ message: 'Invalid credentials' });
+  }
+  
+  // Check if account is locked
+  const isLocked = await SecurityService.isAccountLocked(user.id);
+  if (isLocked) {
+    await SecurityService.recordLoginAttempt(email, ipAddress, false, 'Account locked');
+    return res.status(403).json({ message: 'Account locked due to suspicious activity. Please contact support.' });
+  }
+  
   const ok = await bcrypt.compare(password, user.password_hash);
-  if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
+  if (!ok) {
+    await SecurityService.recordLoginAttempt(email, ipAddress, false, 'Invalid password');
+    await SecurityService.logSecurityEvent('LOGIN_FAILED', user.id, { reason: 'Invalid password' }, req, 'MEDIUM');
+    return res.status(401).json({ message: 'Invalid credentials' });
+  }
+  
   if (user.is_active === 0 || user.is_active === false) {
+    await SecurityService.recordLoginAttempt(email, ipAddress, false, 'Account inactive');
     return res.status(403).json({ message: 'Account inactive. Awaiting admin activation.' });
   }
 
@@ -99,6 +125,25 @@ exports.login = async (req, res) => {
   }
 
   const token = sign({ sub: user.id, role: user.role, tv: user.token_version || 1 });
+  
+  // Record successful login
+  await SecurityService.recordLoginAttempt(email, ipAddress, true);
+  await SecurityService.resetFailedLoginAttempts(user.id);
+  await SecurityService.logSecurityEvent('LOGIN_SUCCESS', user.id, { method: '2FA enabled: ' + !!user.twofa_secret }, req, 'LOW');
+  
+  // Check for suspicious activity
+  await SecurityService.detectSuspiciousActivity(user.id, req);
+  
+  // Log successful login activity
+  await logActivity({
+    user_id: user.id,
+    user_type: user.role === 'ADMIN' ? 'ADMIN' : 'USER',
+    action: 'LOGIN',
+    description: `${user.name} logged in`,
+    ip_address: ipAddress,
+    user_agent: req.headers['user-agent']
+  });
+  
   return res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar_url: user.avatar_url } });
 };
 
@@ -221,7 +266,7 @@ exports.forgotPassword = async (req, res) => {
     console.warn('Reset email send failed:', e.message);
     console.info('[DEV ONLY] Reset link:', resetUrl);
   }
-  return res.json({ message: 'If an account exists, a reset link has been sent' });
+  return res.json({ message: 'Check your email for a link. If it doesn\'t appear within a few minutes, check your spam folder and if in Spam move to inbox.' });
 };
 
 exports.resetPassword = async (req, res) => {

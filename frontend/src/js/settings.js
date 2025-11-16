@@ -1,4 +1,5 @@
 import { API_BASE } from './config.js';
+import '../js/toast.js';
 
 function token(){ return localStorage.getItem('token'); }
 function authHeaders(){ const t = token(); return t ? { Authorization: `Bearer ${t}` } : {}; }
@@ -220,6 +221,147 @@ function wireTwofa(){
   });
 }
 
+// ---------- Email 2FA ----------
+function renderEmail2fa(enabled){
+  const status = document.getElementById('email2faStatus');
+  const setup = document.getElementById('email2faSetup');
+  const disBtn = document.getElementById('email2faDisableBtn');
+  const enBtn = document.getElementById('email2faEnableBtn');
+  
+  if (enabled){
+    status.textContent = '✅ Email Two-Factor Authentication is enabled.';
+    status.className = 'mb-2 small text-success';
+    setup.classList.add('d-none');
+    disBtn.classList.remove('d-none');
+    enBtn.classList.add('d-none');
+  } else {
+    status.textContent = 'Email 2FA is currently disabled. Enable it for additional security.';
+    status.className = 'mb-2 small text-muted';
+    setup.classList.add('d-none');
+    disBtn.classList.add('d-none');
+    enBtn.classList.remove('d-none');
+  }
+}
+
+function wireEmail2fa(){
+  const enBtn = document.getElementById('email2faEnableBtn');
+  const disBtn = document.getElementById('email2faDisableBtn');
+  const verifyBtn = document.getElementById('email2faVerifyBtn');
+  const cancelBtn = document.getElementById('email2faCancelBtn');
+  const setup = document.getElementById('email2faSetup');
+  const codeInput = document.getElementById('email2faCode');
+  let busy = false;
+  
+  function setLoading(btn, on){ 
+    if(!btn) return; 
+    if(on){ 
+      btn.disabled = true; 
+      btn.dataset.origText = btn.textContent; 
+      btn.textContent = 'Please wait…'; 
+    } else { 
+      btn.disabled = false; 
+      if(btn.dataset.origText) btn.textContent = btn.dataset.origText; 
+    } 
+  }
+  
+  // Enable email 2FA - sends verification code
+  enBtn?.addEventListener('click', async ()=>{
+    if (busy) return; 
+    busy = true; 
+    setLoading(enBtn, true);
+    
+    try {
+      await fetchJSON(`${API_BASE}/user/profile/email-2fa/enable`, { 
+        method:'POST', 
+        body: JSON.stringify({}) 
+      });
+      
+      // Show setup form
+      if (setup) setup.classList.remove('d-none');
+      if (enBtn) enBtn.classList.add('d-none');
+      if (codeInput) codeInput.value = '';
+      
+      window.showToast && showToast('Verification code sent to your email', { type:'info' });
+    } catch(e){ 
+      window.showToast ? showToast(e.message || 'Failed to send code', { type:'error' }) : alert(e.message || 'Failed'); 
+    } finally { 
+      busy = false; 
+      setLoading(enBtn, false); 
+    }
+  });
+  
+  // Verify code and complete enablement
+  verifyBtn?.addEventListener('click', async ()=>{
+    if (busy) return; 
+    busy = true; 
+    setLoading(verifyBtn, true);
+    
+    const code = codeInput?.value?.trim();
+    if (!code || code.length !== 6){ 
+      alert('Please enter the 6-digit code from your email.'); 
+      busy=false; 
+      setLoading(verifyBtn,false); 
+      return; 
+    }
+    
+    try {
+      await fetchJSON(`${API_BASE}/user/profile/email-2fa/verify`, { 
+        method:'POST', 
+        body: JSON.stringify({ code }) 
+      });
+      
+      renderEmail2fa(true);
+      if (setup) setup.classList.add('d-none');
+      
+      window.showToast ? showToast('Email 2FA enabled successfully', { type:'success' }) : alert('Email 2FA enabled');
+    } catch(e){ 
+      window.showToast ? showToast(e.message || 'Invalid code', { type:'error' }) : alert(e.message || 'Invalid code'); 
+    } finally { 
+      busy=false; 
+      setLoading(verifyBtn,false); 
+    }
+  });
+  
+  // Disable email 2FA
+  disBtn?.addEventListener('click', async ()=>{
+    if (!confirm('Disable Email 2FA? You will no longer receive email codes when signing in.')) return;
+    if (busy) return; 
+    busy=true; 
+    setLoading(disBtn,true);
+    
+    try { 
+      await fetchJSON(`${API_BASE}/user/profile/email-2fa/disable`, { 
+        method:'POST', 
+        body: JSON.stringify({}) 
+      }); 
+      
+      renderEmail2fa(false); 
+      window.showToast ? showToast('Email 2FA disabled', { type:'warning' }) : alert('Email 2FA disabled'); 
+    } catch(e){ 
+      window.showToast ? showToast(e.message || 'Failed', { type:'error' }) : alert(e.message || 'Failed'); 
+    } finally { 
+      busy=false; 
+      setLoading(disBtn,false); 
+    }
+  });
+  
+  // Cancel setup
+  cancelBtn?.addEventListener('click', ()=>{ 
+    if (setup) setup.classList.add('d-none'); 
+    if (enBtn) enBtn.classList.remove('d-none'); 
+    if (codeInput) codeInput.value = '';
+  });
+}
+
+async function loadEmail2faStatus(){
+  try {
+    const p = await fetchJSON(`${API_BASE}/user/profile`);
+    renderEmail2fa(p.email_2fa_enabled);
+  } catch(e){ 
+    console.warn('Email 2FA status load failed', e); 
+  }
+}
+
 // ---------- Sign out ----------
 function wireSignOut(){
   const buttons = [document.getElementById('signOutBtn'), document.getElementById('signOutBtn2')].filter(Boolean);
@@ -234,10 +376,12 @@ function wireSignOut(){
   wireProfile();
   wirePassword();
   wireTwofa();
+  wireEmail2fa();
   wireSignOut();
   wireAvatar();
   wirePhoneSave();
   loadProfile();
+  loadEmail2faStatus();
 })();
 
 // Recovery codes UX enhancements (copy / download / acknowledge)

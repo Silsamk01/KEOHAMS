@@ -38,8 +38,7 @@ function render(){
     const views = p.view_count || 0;
     
     return `
-      <article class="blog-card-enhanced fade-in" onclick="location.href='/blog/${encodeURIComponent(p.slug)}'">
-        <div class="blog-card-cover">
+      <article class="blog-card-enhanced fade-in" onclick="openPublicPost('${escapeHtml(p.slug)}')">        <div class="blog-card-cover">
           ${p.cover_image ? `<img src="${escapeHtml(p.cover_image)}" alt="${escapeHtml(p.title)}" loading="lazy" />` : ''}
         </div>
         <div class="blog-card-content">
@@ -103,3 +102,9 @@ load();
 document.getElementById('year').textContent = new Date().getFullYear();
 
 function debounce(fn, d=250){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), d); }; }
+
+// Open public post in a new page without authentication
+window.openPublicPost = function(slug) {
+  // Navigate to public post view page
+  window.location.href = `/blog-public/${encodeURIComponent(slug)}`;
+}

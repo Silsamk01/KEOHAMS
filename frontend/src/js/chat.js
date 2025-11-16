@@ -14,7 +14,7 @@ function connectSocket() {
   const t = token();
   if (!t) return null;
   // global io from script
-  socket = window.io('http://localhost:4000', { auth: { token: t } });
+  socket = window.io(window.location.origin, { auth: { token: t } });
   socket.on('connect_error', (err)=> console.warn('socket connect error', err.message));
   socket.on('message:new', async (payload)=>{
     // If message belongs to the joined thread, append
@@ -82,6 +82,7 @@ function renderMessages(list){
   const box = document.getElementById('chatMessages');
   if (!box) return;
   box.innerHTML = '';
+  box.dataset.redirectNoticeShown = 'false'; // Reset redirect notice flag
   list.forEach(m => appendMessage(m));
   box.scrollTop = box.scrollHeight;
 }
@@ -105,11 +106,19 @@ function appendMessage(m){
   const bubble = document.createElement('div');
   bubble.className = `px-3 py-2 rounded-3 ${mine ? 'bg-primary text-white' : 'bg-light'}`;
   bubble.style.maxWidth = '80%';
+  
+  // Apply opacity and border to hidden messages
+  if (m.is_hidden) {
+    bubble.style.opacity = '0.5';
+    bubble.style.border = '1px dashed #999';
+  }
+  
   const time = new Date(m.created_at).toLocaleTimeString();
+  const hiddenLabel = m.is_hidden ? '<span class="badge bg-secondary" style="font-size:0.7em">Hidden</span> ' : '';
   bubble.innerHTML = `
     <div class="d-flex align-items-start gap-2">
       <div class="flex-grow-1">
-        <div class="small">${escapeHtml(m.body)}</div>
+        <div class="small">${hiddenLabel}${escapeHtml(m.body)}</div>
         <div class="small text-muted mt-1">${time}</div>
       </div>
       <button class="btn btn-sm btn-link text-muted p-0" title="Delete for me" aria-label="Delete message" data-act="hide-msg" data-id="${m.id}">✕</button>
@@ -122,6 +131,63 @@ function appendMessage(m){
     try { await hideMessageApi(m.id); wrap.remove(); } catch(_){ alert('Failed to delete message'); }
   });
   box.scrollTop = box.scrollHeight;
+  
+  // Auto-redirect to full chat page if conversation gets too long (in shop/embedded chat modals)
+  checkChatHeightAndRedirect(box);
+}
+
+// Check if chat box height exceeds threshold and redirect to full chat page
+function checkChatHeightAndRedirect(box){
+  if (!box) return;
+  const MAX_CHAT_HEIGHT = 400; // pixels - threshold for auto-redirect
+  const MESSAGE_COUNT_THRESHOLD = 8; // or based on message count
+  
+  // Only apply to modal chat (not the full chat page)
+  const isInModal = box.closest('.modal');
+  if (!isInModal) return;
+  
+  // Check if we've already shown the redirect notice
+  if (box.dataset.redirectNoticeShown === 'true') return;
+  
+  const messageCount = box.children.length;
+  const boxHeight = box.scrollHeight;
+  
+  // If chat exceeds threshold, show redirect notice
+  if (boxHeight > MAX_CHAT_HEIGHT || messageCount >= MESSAGE_COUNT_THRESHOLD) {
+    box.dataset.redirectNoticeShown = 'true';
+    
+    // Create redirect notice
+    const notice = document.createElement('div');
+    notice.className = 'alert alert-info d-flex align-items-center justify-content-between mt-2 mb-0';
+    notice.style.position = 'sticky';
+    notice.style.bottom = '0';
+    notice.style.zIndex = '10';
+    notice.innerHTML = `
+      <div class="flex-grow-1">
+        <strong>💬 Conversation is getting long!</strong><br>
+        <small>Continue in the full chat page for a better experience.</small>
+      </div>
+      <button class="btn btn-sm btn-primary ms-2" data-redirect-chat>Go to Chat Page</button>
+    `;
+    
+    // Insert notice at the end of the modal body
+    const modalBody = box.closest('.modal-body');
+    if (modalBody) {
+      modalBody.appendChild(notice);
+      
+      // Wire redirect button
+      notice.querySelector('[data-redirect-chat]').addEventListener('click', ()=>{
+        // Close the modal
+        const modal = box.closest('.modal');
+        if (modal) {
+          const bsModal = bootstrap.Modal.getInstance(modal);
+          if (bsModal) bsModal.hide();
+        }
+        // Redirect to full chat page
+        window.location.href = '/chat';
+      });
+    }
+  }
 }
 
 function isMine(m){ try { const t = JSON.parse(atob(token().split('.')[1])); return t && t.sub === m.sender_id; } catch(_) { return false; } }

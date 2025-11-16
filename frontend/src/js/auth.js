@@ -72,7 +72,21 @@ function isAuthenticated() {
 
 // Logout function
 function logout() {
+  // Clear all authentication data
   clearToken();
+  localStorage.clear();
+  sessionStorage.clear();
+  
+  // Clear any cached data
+  if ('caches' in window) {
+    caches.keys().then(names => {
+      names.forEach(name => caches.delete(name));
+    });
+  }
+  
+  // Force page reload with no-cache to prevent browser from showing cached authenticated pages
+  window.location.replace('/');
+  // Prevent back button from accessing cached pages
   window.location.href = '/';
 }
 

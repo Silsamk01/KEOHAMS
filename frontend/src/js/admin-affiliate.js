@@ -817,13 +817,389 @@ function showToast(message, type = 'info') {
 
 // Fetch with authentication
 async function fetchWithAuth(url, options = {}) {
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem('token');
     const headers = {
         'Authorization': `Bearer ${token}`,
         ...options.headers
     };
     
     return fetch(url, { ...options, headers });
+}
+
+// View sale details
+async function viewSaleDetails(saleId) {
+    try {
+        const response = await fetchWithAuth(`/api/admin/affiliate/sales/${saleId}`);
+        if (!response.ok) throw new Error('Failed to fetch sale details');
+        
+        const sale = await response.json();
+        
+        // Show modal with sale details
+        const modal = document.createElement('div');
+        modal.className = 'modal fade';
+        modal.innerHTML = `
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Sale Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <dl class="row">
+                            <dt class="col-sm-4">Sale Reference:</dt>
+                            <dd class="col-sm-8"><strong>${sale.sale_reference}</strong></dd>
+                            <dt class="col-sm-4">Amount:</dt>
+                            <dd class="col-sm-8">$${parseFloat(sale.sale_amount).toFixed(2)}</dd>
+                            <dt class="col-sm-4">Payment Method:</dt>
+                            <dd class="col-sm-8">${sale.payment_method}</dd>
+                            <dt class="col-sm-4">Status:</dt>
+                            <dd class="col-sm-8"><span class="badge bg-${sale.verification_status === 'VERIFIED' ? 'success' : sale.verification_status === 'REJECTED' ? 'danger' : 'warning'}">${sale.verification_status}</span></dd>
+                            <dt class="col-sm-4">Created:</dt>
+                            <dd class="col-sm-8">${new Date(sale.created_at).toLocaleString()}</dd>
+                            ${sale.payment_details ? `<dt class="col-sm-4">Payment Details:</dt><dd class="col-sm-8">${sale.payment_details}</dd>` : ''}
+                            ${sale.verification_notes ? `<dt class="col-sm-4">Verification Notes:</dt><dd class="col-sm-8">${sale.verification_notes}</dd>` : ''}
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+        modal.addEventListener('hidden.bs.modal', () => modal.remove());
+    } catch (error) {
+        console.error('Failed to view sale details:', error);
+        showToast('Failed to load sale details', 'error');
+    }
+}
+
+// View commission details
+async function viewCommissionDetails(saleId) {
+    try {
+        const response = await fetchWithAuth(`/api/admin/affiliate/sales/${saleId}`);
+        if (!response.ok) throw new Error('Failed to fetch commission details');
+        
+        const sale = await response.json();
+        const commissions = sale.commissions || [];
+        
+        const modal = document.createElement('div');
+        modal.className = 'modal fade';
+        modal.innerHTML = `
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Commission Details - ${sale.sale_reference}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <h6>Sale Amount: $${parseFloat(sale.sale_amount).toFixed(2)}</h6>
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Level</th>
+                                    <th>Affiliate</th>
+                                    <th>Rate</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${commissions.map(c => `
+                                    <tr>
+                                        <td>${c.level}</td>
+                                        <td>${c.affiliate_name || c.referral_code}</td>
+                                        <td>${c.commission_rate}%</td>
+                                        <td>$${parseFloat(c.commission_amount).toFixed(2)}</td>
+                                        <td><span class="badge bg-${c.status === 'PAID' ? 'success' : 'warning'}">${c.status}</span></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+        modal.addEventListener('hidden.bs.modal', () => modal.remove());
+    } catch (error) {
+        console.error('Failed to view commission details:', error);
+        showToast('Failed to load commission details', 'error');
+    }
+}
+
+// View affiliate details
+async function viewAffiliateDetails(affiliateId) {
+    try {
+        const response = await fetchWithAuth(`/api/admin/affiliate/${affiliateId}/details`);
+        if (!response.ok) throw new Error('Failed to fetch affiliate details');
+        
+        const data = await response.json();
+        const { affiliate, stats, upline, downline, recent_sales, recent_commissions } = data;
+        
+        const modal = document.createElement('div');
+        modal.className = 'modal fade';
+        modal.innerHTML = `
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Affiliate Details - ${affiliate.name}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Profile</h6>
+                                <dl class="row">
+                                    <dt class="col-sm-4">Referral Code:</dt>
+                                    <dd class="col-sm-8"><code>${affiliate.referral_code}</code></dd>
+                                    <dt class="col-sm-4">Email:</dt>
+                                    <dd class="col-sm-8">${affiliate.email}</dd>
+                                    <dt class="col-sm-4">Total Earnings:</dt>
+                                    <dd class="col-sm-8">$${parseFloat(affiliate.total_earnings).toFixed(2)}</dd>
+                                    <dt class="col-sm-4">Available Balance:</dt>
+                                    <dd class="col-sm-8">$${parseFloat(affiliate.available_balance).toFixed(2)}</dd>
+                                    <dt class="col-sm-4">Pending Balance:</dt>
+                                    <dd class="col-sm-8">$${parseFloat(affiliate.pending_balance).toFixed(2)}</dd>
+                                </dl>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Network</h6>
+                                <dl class="row">
+                                    <dt class="col-sm-4">Direct Referrals:</dt>
+                                    <dd class="col-sm-8">${affiliate.direct_referrals}</dd>
+                                    <dt class="col-sm-4">Total Downline:</dt>
+                                    <dd class="col-sm-8">${affiliate.total_downline}</dd>
+                                </dl>
+                                <h6>Sales Statistics</h6>
+                                <dl class="row">
+                                    <dt class="col-sm-4">Total Sales:</dt>
+                                    <dd class="col-sm-8">${stats.sales.total_count}</dd>
+                                    <dt class="col-sm-4">Total Amount:</dt>
+                                    <dd class="col-sm-8">$${parseFloat(stats.sales.total_amount).toFixed(2)}</dd>
+                                    <dt class="col-sm-4">Verified Sales:</dt>
+                                    <dd class="col-sm-8">${stats.sales.verified_count}</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+        modal.addEventListener('hidden.bs.modal', () => modal.remove());
+    } catch (error) {
+        console.error('Failed to view affiliate details:', error);
+        showToast('Failed to load affiliate details', 'error');
+    }
+}
+
+// Export affiliate data
+async function exportAffiliateData() {
+    try {
+        showToast('Generating export...', 'info');
+        
+        // Fetch all affiliates data
+        const response = await fetch(`${API_BASE}/admin/affiliate/list?pageSize=10000`, {
+            headers: authHeaders()
+        });
+        
+        if (!response.ok) throw new Error('Failed to fetch affiliate data');
+        
+        const { data } = await response.json();
+        
+        if (!data || data.length === 0) {
+            showToast('No affiliate data to export', 'warning');
+            return;
+        }
+        
+        // Prepare CSV content
+        const headers = ['ID', 'Name', 'Email', 'Referral Code', 'Status', 'Total Earnings', 'Available Balance', 'Pending Balance', 'Direct Referrals', 'Total Downline', 'Created At'];
+        const csvRows = [headers.join(',')];
+        
+        data.forEach(affiliate => {
+            const row = [
+                affiliate.id,
+                `"${(affiliate.name || '').replace(/"/g, '""')}"`, // Escape quotes
+                affiliate.email,
+                affiliate.referral_code,
+                affiliate.status,
+                affiliate.total_earnings || 0,
+                affiliate.available_balance || 0,
+                affiliate.pending_balance || 0,
+                affiliate.direct_referrals || 0,
+                affiliate.total_downline || 0,
+                new Date(affiliate.created_at).toISOString()
+            ];
+            csvRows.push(row.join(','));
+        });
+        
+        // Create and download CSV file
+        const csvContent = csvRows.join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', `affiliates_export_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showToast('Affiliate data exported successfully', 'success');
+    } catch (error) {
+        showToast('Failed to export data: ' + error.message, 'danger');
+    }
+}
+
+// Recalculate commissions
+async function recalculateCommissions() {
+    if (!confirm('⚠️ WARNING: This will recalculate all commissions based on current rates and verified sales.\n\nThis is a destructive operation that:\n• Deletes existing commission records\n• Recalculates from scratch based on verified sales\n• Updates all affiliate balances\n\nThis should only be used if commission data is corrupted or rate settings changed.\n\nAre you sure you want to continue?')) return;
+    
+    try {
+        showToast('Recalculating commissions... This may take a moment.', 'info');
+        
+        // Call backend endpoint to recalculate commissions
+        const response = await fetch(`${API_BASE}/admin/affiliate/recalculate-commissions`, {
+            method: 'POST',
+            headers: authHeaders()
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Recalculation failed');
+        }
+        
+        const result = await response.json();
+        
+        showToast(`Commissions recalculated successfully! Processed ${result.sales_count || 0} sales, created ${result.commissions_created || 0} commission records.`, 'success');
+        
+        // Refresh all relevant sections
+        await Promise.all([
+            loadOverview(),
+            loadPendingSales(),
+            loadUnpaidCommissions()
+        ]);
+    } catch (error) {
+        showToast('Failed to recalculate commissions: ' + error.message, 'danger');
+    }
+}
+
+/**
+ * Admin: Manually create affiliate sale
+ */
+async function createAffiliateSale() {
+    const form = document.getElementById('createSaleForm');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+    
+    const data = {
+        affiliate_id: document.getElementById('saleAffiliateId').value,
+        sale_reference: document.getElementById('newSaleReference').value,
+        sale_amount: parseFloat(document.getElementById('newSaleAmount').value),
+        payment_method: document.getElementById('newPaymentMethod').value,
+        customer_email: document.getElementById('newCustomerEmail').value || null,
+        payment_details: document.getElementById('newPaymentDetails').value || null,
+        notes: document.getElementById('newSaleNotes').value || null
+    };
+    
+    try {
+        showToast('Creating sale...', 'info');
+        
+        const response = await fetch(`${API_BASE}/admin/affiliate/sales/create`, {
+            method: 'POST',
+            headers: {
+                ...authHeaders(),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to create sale');
+        }
+        
+        const result = await response.json();
+        showToast('Sale created and verified successfully! Commissions calculated.', 'success');
+        
+        // Close modal and reset form
+        const modal = bootstrap.Modal.getInstance(document.getElementById('createSaleModal'));
+        if (modal) modal.hide();
+        form.reset();
+        
+        // Refresh data
+        await Promise.all([
+            loadAffiliateStats(),
+            loadPendingSales(),
+            loadAffiliatesList()
+        ]);
+    } catch (error) {
+        showToast('Failed to create sale: ' + error.message, 'danger');
+    }
+}
+
+/**
+ * Admin: Send notification to affiliates
+ */
+async function notifyAffiliates() {
+    const form = document.getElementById('notifyAffiliatesForm');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+    
+    const target = document.getElementById('notifyTarget').value;
+    const data = {
+        target,
+        title: document.getElementById('notifyTitle').value,
+        body: document.getElementById('notifyBody').value,
+        url: document.getElementById('notifyUrl').value || null
+    };
+    
+    // If specific affiliates selected, get their IDs
+    if (target === 'SPECIFIC') {
+        const selectedCheckboxes = document.querySelectorAll('.affiliate-notify-checkbox:checked');
+        if (selectedCheckboxes.length === 0) {
+            showToast('Please select at least one affiliate', 'warning');
+            return;
+        }
+        data.affiliate_ids = Array.from(selectedCheckboxes).map(cb => parseInt(cb.value));
+    }
+    
+    try {
+        showToast('Sending notifications...', 'info');
+        
+        const response = await fetch(`${API_BASE}/admin/affiliate/notify`, {
+            method: 'POST',
+            headers: {
+                ...authHeaders(),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to send notifications');
+        }
+        
+        const result = await response.json();
+        showToast(`Notifications sent successfully to ${result.notifications_sent} affiliates!`, 'success');
+        
+        // Close modal and reset form
+        const modal = bootstrap.Modal.getInstance(document.getElementById('notifyAffiliatesModal'));
+        if (modal) modal.hide();
+        form.reset();
+    } catch (error) {
+        showToast('Failed to send notifications: ' + error.message, 'danger');
+    }
 }
 
 // Export functions for global access
@@ -834,3 +1210,10 @@ window.toggleAffiliateStatus = toggleAffiliateStatus;
 window.toggleCommissionSelection = toggleCommissionSelection;
 window.toggleAllCommissions = toggleAllCommissions;
 window.searchAffiliates = searchAffiliates;
+window.viewSaleDetails = viewSaleDetails;
+window.createAffiliateSale = createAffiliateSale;
+window.notifyAffiliates = notifyAffiliates;
+window.viewCommissionDetails = viewCommissionDetails;
+window.viewAffiliateDetails = viewAffiliateDetails;
+window.exportAffiliateData = exportAffiliateData;
+window.recalculateCommissions = recalculateCommissions;

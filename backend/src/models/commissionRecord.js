@@ -32,9 +32,10 @@ async function createCommissionsForSale(sale_id, affiliate_id, sale_amount) {
   const commissions = [];
   let totalCommissionRate = 0;
   const maxTotalRate = settings[0]?.max_total_rate || 25.00;
+  const MAX_COMMISSION_LEVELS = 3; // Only 3 levels: 0 (direct), 1 (first upline), 2 (second upline)
   
-  // Calculate commissions for each level
-  for (let level = 0; level < hierarchy.length && level < settings.length; level++) {
+  // Calculate commissions for each level (max 3 levels)
+  for (let level = 0; level < hierarchy.length && level < settings.length && level < MAX_COMMISSION_LEVELS; level++) {
     const affiliate = hierarchy[level];
     const setting = settings[level];
     

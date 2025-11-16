@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System Logs - Admin | KEOHAMS</title>
+  <link rel="icon" type="image/jpeg" href="/keohamlogo.jpg">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link href="/src/css/styles.css" rel="stylesheet">
+  <style>
+    .log-entry {
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 0.875rem;
+      padding: 0.5rem;
+      margin-bottom: 0.5rem;
+      border-left: 3px solid #dee2e6;
+      background: var(--bs-light);
+    }
+    .log-entry.error { border-left-color: #dc3545; background: #fff5f5; }
+    .log-entry.warn { border-left-color: #ffc107; background: #fffbf0; }
+    .log-entry.info { border-left-color: #0dcaf0; background: #f0f9ff; }
+    .log-timestamp { color: #6c757d; font-weight: 600; }
+    .log-level { display: inline-block; padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-weight: 600; font-size: 0.75rem; }
+    .log-level.error { background: #dc3545; color: white; }
+    .log-level.warn { background: #ffc107; color: #000; }
+    .log-level.info { background: #0dcaf0; color: #000; }
+    .log-level.debug { background: #6c757d; color: white; }
+    .log-message { margin-top: 0.25rem; word-break: break-word; }
+    .stats-card { transition: transform 0.2s; }
+    .stats-card:hover { transform: translateY(-2px); }
+    [data-theme='dark'] .log-entry { background: #1a1d20; }
+    [data-theme='dark'] .log-entry.error { background: #2d1517; }
+    [data-theme='dark'] .log-entry.warn { background: #2d2817; }
+    [data-theme='dark'] .log-entry.info { background: #172d35; }
+  </style>
+</head>
+<body>
+  <div class="d-flex">
+    <!-- Sidebar -->
+    <nav class="bg-dark text-white p-3" style="width: 250px; min-height: 100vh;">
+      <h4 class="mb-4">
+        <img src="/keohamlogo.jpg" alt="KEOHAMS" style="width: 32px; height: 32px; border-radius: 4px;" class="me-2">
+        Admin Panel
+      </h4>
+      <ul class="nav flex-column">
+        <li class="nav-item"><a class="nav-link text-white" href="/admin"><i class="fas fa-dashboard me-2"></i>Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link text-white" href="/admin?tab=users"><i class="fas fa-users me-2"></i>Users</a></li>
+        <li class="nav-item"><a class="nav-link text-white" href="/admin?tab=products"><i class="fas fa-box me-2"></i>Products</a></li>
+        <li class="nav-item"><a class="nav-link text-white" href="/admin?tab=orders"><i class="fas fa-shopping-cart me-2"></i>Orders</a></li>
+        <li class="nav-item"><a class="nav-link text-white" href="/admin?tab=kyc"><i class="fas fa-id-card me-2"></i>KYC Review</a></li>
+        <li class="nav-item"><a class="nav-link text-white" href="/admin?tab=affiliate"><i class="fas fa-network-wired me-2"></i>Affiliates</a></li>
+        <li class="nav-item"><a class="nav-link text-white active" href="/admin-logs"><i class="fas fa-file-lines me-2"></i>System Logs</a></li>
+        <li class="nav-item mt-3"><a class="nav-link text-danger" href="#" onclick="logout()"><i class="fas fa-sign-out me-2"></i>Logout</a></li>
+      </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="flex-grow-1">
+      <!-- Header -->
+      <header class="bg-white border-bottom p-3 d-flex justify-content-between align-items-center">
+        <h1 class="h4 mb-0">System Logs</h1>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-secondary btn-sm" data-theme-toggle>
+            <i class="fas fa-moon"></i> Dark Mode
+          </button>
+          <span class="text-muted" id="adminUser"></span>
+        </div>
+      </header>
+
+      <!-- Content -->
+      <main class="p-4">
+        <!-- Stats Cards -->
+        <div class="row g-3 mb-4">
+          <div class="col-md-3">
+            <div class="card stats-card border-danger">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="text-muted small mb-1">Errors (24h)</h6>
+                    <h3 class="mb-0 text-danger" id="errorCount">0</h3>
+                  </div>
+                  <i class="fas fa-circle-exclamation fa-2x text-danger"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card stats-card border-warning">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="text-muted small mb-1">Warnings (24h)</h6>
+                    <h3 class="mb-0 text-warning" id="warnCount">0</h3>
+                  </div>
+                  <i class="fas fa-triangle-exclamation fa-2x text-warning"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card stats-card border-info">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="text-muted small mb-1">Total Logs (24h)</h6>
+                    <h3 class="mb-0 text-info" id="totalCount">0</h3>
+                  </div>
+                  <i class="fas fa-list fa-2x text-info"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card stats-card border-success">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="text-muted small mb-1">Server Status</h6>
+                    <h3 class="mb-0 text-success" id="serverStatus">Online</h3>
+                  </div>
+                  <i class="fas fa-server fa-2x text-success"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card mb-4">
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-3">
+                <label class="form-label small">Log Level</label>
+                <select class="form-select" id="filterLevel">
+                  <option value="">All Levels</option>
+                  <option value="error">Errors</option>
+                  <option value="warn">Warnings</option>
+                  <option value="info">Info</option>
+                  <option value="debug">Debug</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small">Time Range</label>
+                <select class="form-select" id="filterTime">
+                  <option value="1">Last Hour</option>
+                  <option value="6">Last 6 Hours</option>
+                  <option value="24" selected>Last 24 Hours</option>
+                  <option value="168">Last 7 Days</option>
+                  <option value="720">Last 30 Days</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small">Search</label>
+                <input type="text" class="form-control" id="searchLogs" placeholder="Search in logs...">
+              </div>
+              <div class="col-md-2 d-flex align-items-end gap-2">
+                <button class="btn btn-primary" onclick="loadLogs()">
+                  <i class="fas fa-sync me-1"></i>Refresh
+                </button>
+                <button class="btn btn-success" onclick="downloadLogs()">
+                  <i class="fas fa-download"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Logs Display -->
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Log Entries</h5>
+            <button class="btn btn-sm btn-outline-danger" onclick="clearLogs()">
+              <i class="fas fa-trash me-1"></i>Clear Old Logs
+            </button>
+          </div>
+          <div class="card-body">
+            <div id="logsContainer">
+              <div class="text-center text-muted py-5">
+                <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                <p>Loading logs...</p>
+              </div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-3">
+              <small class="text-muted" id="logInfo">Showing 0 logs</small>
+              <nav>
+                <ul class="pagination pagination-sm mb-0" id="pagination"></ul>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module">
+    import { refreshGlobalUI } from '/src/js/global.js';
+    
+    const API_BASE = window.location.origin + '/api';
+    let currentPage = 1;
+    let logsData = [];
+
+    function token() {
+      return localStorage.getItem('token');
+    }
+
+    function authHeaders() {
+      const t = token();
+      return t ? { Authorization: `Bearer ${t}` } : {};
+    }
+
+    async function fetchJSON(url, opts = {}) {
+      const res = await fetch(url, {
+        ...opts,
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders(),
+          ...(opts.headers || {})
+        }
+      });
+      if (!res.ok) throw new Error(await res.text() || 'Request failed');
+      return res.json();
+    }
+
+    async function checkAuth() {
+      try {
+        const user = await fetchJSON(`${API_BASE}/admin/profile`);
+        document.getElementById('adminUser').textContent = user.email || 'Admin';
+      } catch (error) {
+        localStorage.removeItem('token');
+        window.location.href = '/admin?tab=login';
+      }
+    }
+
+    window.logout = function() {
+      localStorage.removeItem('token');
+      window.location.href = '/admin?tab=login';
+    };
+
+    window.loadLogs = async function() {
+      try {
+        const level = document.getElementById('filterLevel').value;
+        const hours = document.getElementById('filterTime').value;
+        const search = document.getElementById('searchLogs').value;
+
+        const params = new URLSearchParams({
+          hours,
+          page: currentPage,
+          pageSize: 50
+        });
+        if (level) params.append('level', level);
+        if (search) params.append('search', search);
+
+        const data = await fetchJSON(`${API_BASE}/admin/logs?${params}`);
+        
+        logsData = data.logs || [];
+        renderLogs(logsData);
+        updateStats(data.stats || {});
+        updatePagination(data.total || 0, 50);
+      } catch (error) {
+        console.error('Failed to load logs:', error);
+        document.getElementById('logsContainer').innerHTML = `
+          <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            Failed to load logs: ${error.message}
+          </div>`;
+      }
+    };
+
+    function renderLogs(logs) {
+      const container = document.getElementById('logsContainer');
+      
+      if (!logs || logs.length === 0) {
+        container.innerHTML = `
+          <div class="text-center text-muted py-5">
+            <i class="fas fa-inbox fa-2x mb-3"></i>
+            <p>No logs found for the selected filters</p>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = logs.map(log => `
+        <div class="log-entry ${log.level}">
+          <div class="d-flex justify-content-between align-items-start">
+            <div class="flex-grow-1">
+              <span class="log-timestamp">${formatTimestamp(log.timestamp)}</span>
+              <span class="log-level ${log.level}">${log.level.toUpperCase()}</span>
+              ${log.source ? `<span class="badge bg-secondary ms-2">${log.source}</span>` : ''}
+            </div>
+            ${log.count > 1 ? `<span class="badge bg-info">${log.count}x</span>` : ''}
+          </div>
+          <div class="log-message">${escapeHtml(log.message)}</div>
+          ${log.stack ? `<details class="mt-2"><summary class="text-muted small">Stack Trace</summary><pre class="small mt-2 mb-0">${escapeHtml(log.stack)}</pre></details>` : ''}
+        </div>
+      `).join('');
+
+      document.getElementById('logInfo').textContent = `Showing ${logs.length} logs`;
+    }
+
+    function updateStats(stats) {
+      document.getElementById('errorCount').textContent = stats.errors || 0;
+      document.getElementById('warnCount').textContent = stats.warnings || 0;
+      document.getElementById('totalCount').textContent = stats.total || 0;
+      
+      // Check server health
+      if (stats.errors > 100) {
+        document.getElementById('serverStatus').textContent = 'Issues';
+        document.getElementById('serverStatus').className = 'mb-0 text-danger';
+      } else if (stats.errors > 10) {
+        document.getElementById('serverStatus').textContent = 'Warning';
+        document.getElementById('serverStatus').className = 'mb-0 text-warning';
+      }
+    }
+
+    function updatePagination(total, pageSize) {
+      const totalPages = Math.ceil(total / pageSize);
+      const pagination = document.getElementById('pagination');
+      
+      if (totalPages <= 1) {
+        pagination.innerHTML = '';
+        return;
+      }
+
+      let html = '';
+      for (let i = 1; i <= Math.min(totalPages, 5); i++) {
+        html += `
+          <li class="page-item ${i === currentPage ? 'active' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${i}); return false;">${i}</a>
+          </li>`;
+      }
+      pagination.innerHTML = html;
+    }
+
+    window.changePage = function(page) {
+      currentPage = page;
+      loadLogs();
+    };
+
+    window.downloadLogs = async function() {
+      try {
+        const level = document.getElementById('filterLevel').value;
+        const hours = document.getElementById('filterTime').value;
+        
+        const params = new URLSearchParams({ hours, format: 'csv' });
+        if (level) params.append('level', level);
+
+        // Use fetch with auth header instead of direct navigation
+        const response = await fetch(`${API_BASE}/admin/logs/download?${params}`, {
+          method: 'GET',
+          headers: {
+            ...authHeaders()
+          }
+        });
+        
+        if (!response.ok) throw new Error('Download failed');
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `keohams-logs-${Date.now()}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        alert('Failed to download logs: ' + error.message);
+      }
+    };
+
+    window.clearLogs = async function() {
+      if (!confirm('Clear logs older than 30 days? This cannot be undone.')) return;
+      
+      try {
+        await fetchJSON(`${API_BASE}/admin/logs/clear`, { 
+          method: 'POST',
+          body: JSON.stringify({ days: 30 })
+        });
+        alert('Old logs cleared successfully');
+        loadLogs();
+      } catch (error) {
+        alert('Failed to clear logs: ' + error.message);
+      }
+    };
+
+    function formatTimestamp(ts) {
+      const date = new Date(ts);
+      return date.toLocaleString('en-US', {
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Auto-refresh every 30 seconds
+    setInterval(loadLogs, 30000);
+
+    // Event listeners
+    document.getElementById('filterLevel').addEventListener('change', () => { currentPage = 1; loadLogs(); });
+    document.getElementById('filterTime').addEventListener('change', () => { currentPage = 1; loadLogs(); });
+    document.getElementById('searchLogs').addEventListener('input', debounce(() => { currentPage = 1; loadLogs(); }, 500));
+
+    function debounce(func, wait) {
+      let timeout;
+      return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+      };
+    }
+
+    // Initialize
+    checkAuth();
+    loadLogs();
+    refreshGlobalUI();
+  </script>
+</body>
+</html>

@@ -12,8 +12,10 @@ const SIDEBAR_HTML = `
     <a class="nav-link" data-path="/dashboard" data-pane="shop" data-requires-kyc="true" href="/dashboard?pane=shop">
       Shop <span class="badge bg-warning text-dark ms-1 d-none" data-kyc-lock>🔒</span>
     </a>
-    <a class="nav-link" data-path="/dashboard" data-pane="blog" href="/dashboard?pane=blog">Blog</a>
-    <a class="nav-link" data-path="/dashboard" data-pane="chats" href="/dashboard?pane=chats">Chat</a>
+    <a class="nav-link" data-path="/dashboard" data-pane="blog" data-requires-kyc="true" href="/dashboard?pane=blog">
+      Blog <span class="badge bg-warning text-dark ms-1 d-none" data-kyc-lock>🔒</span>
+    </a>
+    <a class="nav-link" data-path="/chat" href="/chat">Chat</a>
     <a class="nav-link" data-path="/dashboard" data-pane="orders" data-requires-kyc="true" href="/dashboard?pane=orders">
       Orders <span class="badge bg-warning text-dark ms-1 d-none" data-kyc-lock>🔒</span>
     </a>
@@ -66,14 +68,23 @@ function wireSignOut(){
 async function checkKYCAndLockFeatures() {
   try {
     const token = localStorage.getItem("token");
-    if (!token) return;
+    
+    // If no token, user is not logged in - check for features requiring authentication
+    if (!token) {
+      checkAuthRequiredFeatures();
+      return;
+    }
 
-    const res = await fetch(`http://localhost:4000/api/user/profile?_=${Date.now()}` , {
+    const res = await fetch(`${window.location.origin}/api/user/profile?_=${Date.now()}` , {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store'
     });
 
-    if (!res.ok) return;
+    if (!res.ok) {
+      checkAuthRequiredFeatures();
+      return;
+    }
+    
     const data = await res.json();
 
   // Profile shape returns kyc at top-level e.g., { ..., kyc: { status: 'APPROVED' } }
@@ -156,8 +167,46 @@ async function checkKYCAndLockFeatures() {
       });
     }
   } catch (err) {
-    console.error("KYC check failed:", err);
+    // Silent fail - KYC check is optional for sidebar rendering
+    checkAuthRequiredFeatures();
   }
+}
+
+// For non-logged in users, prompt account creation instead of showing KYC requirements
+function checkAuthRequiredFeatures() {
+  // Get all links that would require authentication (KYC features need login first)
+  const protectedLinks = document.querySelectorAll('[data-requires-kyc="true"]');
+
+  protectedLinks.forEach(link => {
+    const lockBadge = link.querySelector('[data-kyc-lock]');
+    
+    // Show lock badge
+    if (lockBadge) lockBadge.classList.remove("d-none");
+
+    // Add disabled styling
+    link.classList.add("disabled", "text-muted");
+    link.style.opacity = "0.6";
+    link.style.cursor = "not-allowed";
+
+    // Prevent navigation and prompt to create account
+    const blockClick = function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+
+      const message = "🔒 Account Required";
+      const detail = "Please create an account or sign in to access this feature.";
+
+      if (confirm(`${message}\n\n${detail}\n\nWould you like to create an account now?`)) {
+        window.location.href = '/register';
+      }
+      return false;
+    };
+
+    // Add multiple event listeners to ensure blocking
+    link.addEventListener("click", blockClick, { capture: true });
+    link.addEventListener("mousedown", blockClick, { capture: true });
+  });
 }
 
 function ensureSidebar(){
@@ -233,7 +282,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
   try {
     const t = localStorage.getItem('token');
     if(t){
-      fetch('http://localhost:4000/api/quotations/mine?page=1&pageSize=50', { headers: { Authorization: 'Bearer '+t } })
+      fetch(`${window.location.origin}/api/quotations/mine?page=1&pageSize=50`, { headers: { Authorization: 'Bearer '+t } })
         .then(r=> r.ok ? r.json(): Promise.reject())
         .then(j=>{
           const list = j.data||[];

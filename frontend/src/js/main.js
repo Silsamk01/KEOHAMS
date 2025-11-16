@@ -238,11 +238,11 @@ function wireEvents() {
 						password: els.signupPassword.value,
 						phone: els.signupPhone.value.trim(),
 							address: els.signupAddress.value.trim(),
-							captchaToken, captchaAnswer
-					});
-					bootstrap.Modal.getInstance(els.signupModal).hide();
-					alert('Account created. Please check your email to verify your address.');
-				} catch (err) {
+						captchaToken, captchaAnswer
+				});
+				bootstrap.Modal.getInstance(els.signupModal).hide();
+				alert('Check your email for a link. If it doesn\'t appear within a few minutes, check your spam folder and if in Spam move to inbox.');
+			} catch (err) {
 					alert(err.message);
 				}
 			});

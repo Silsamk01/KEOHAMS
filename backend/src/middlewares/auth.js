@@ -52,7 +52,6 @@ function requireSelfOrAdmin(req, res, next) {
   return res.status(403).json({ message: 'Forbidden' });
 }
 
-module.exports = { requireAuth, requireRole, requireSelfOrAdmin };
 /**
  * Try to read JWT if sent; do not error if absent/invalid. Sets req.user when valid.
  */
@@ -62,7 +61,7 @@ async function tryAuth(req, _res, next) {
   if (!token) return next();
   try {
     const payload = verify(token);
-  const user = await db(User.TABLE).where({ id: payload.sub }).first();
+    const user = await db(User.TABLE).where({ id: payload.sub }).first();
     if (user && !user.deleted_at && !user.is_deleted && user.is_active !== 0 && user.is_active !== false) {
       if (payload.tv && user.token_version && payload.tv !== user.token_version) {
         // token version mismatch -> treat as anonymous
@@ -76,4 +75,17 @@ async function tryAuth(req, _res, next) {
   next();
 }
 
-module.exports.tryAuth = tryAuth;
+// Aliases for compatibility
+const authenticate = requireAuth;
+const verifyToken = requireAuth;
+const optionalAuth = tryAuth;
+
+module.exports = { 
+  requireAuth, 
+  requireRole, 
+  requireSelfOrAdmin, 
+  tryAuth,
+  authenticate,
+  verifyToken,
+  optionalAuth
+};

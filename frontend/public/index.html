@@ -7,20 +7,446 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>KEOHAMS Wholesale Marketplace</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <link href="/src/css/styles.css" rel="stylesheet" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <meta name="description" content="Buy wholesale in bulk with MOQ, RFQ, and real-time support.">
+  
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    :root {
+      --primary-color: #0d6efd;
+      --secondary-color: #6c757d;
+      --success-color: #198754;
+      --warning-color: #ffc107;
+      --danger-color: #dc3545;
+      --light-color: #f8f9fa;
+      --dark-color: #212529;
+      --gray-color: #6c757d;
+      --border-radius: 0.375rem;
+      --box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+      --transition: all 0.15s ease-in-out;
+    }
+
+    [data-theme='dark'] {
+      --primary-color: #0d6efd;
+      --secondary-color: #6c757d;
+      --success-color: #198754;
+      --warning-color: #ffc107;
+      --danger-color: #dc3545;
+      --light-color: #212529;
+      --dark-color: #f8f9fa;
+      --gray-color: #adb5bd;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--light-color);
+      color: var(--dark-color);
+      transition: var(--transition);
+    }
+
+    .announcement {
+      background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+      font-weight: 500;
+    }
+
+    .brand-logo {
+      height: 40px;
+      width: auto;
+    }
+
+    .hero-bg {
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      color: white;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-bg::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" opacity="0.1"><polygon fill="white" points="0,1000 1000,0 1000,1000"/></svg>');
+      background-size: cover;
+    }
+
+    .hero-bg > .container {
+      position: relative;
+      z-index: 1;
+    }
+
+    .text-gradient {
+      background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .feature-card, .step, .blog-preview-card {
+      transition: var(--transition);
+      border: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .feature-card:hover, .step:hover, .blog-preview-card:hover, .card.shadow-hover:hover {
+      box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+
+    .icon-circle {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+    }
+
+    .step-num {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--primary-color);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      margin-bottom: 1rem;
+    }
+
+    .bg-gradient-primary {
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)) !important;
+    }
+
+    .product-card {
+      transition: var(--transition);
+      height: 100%;
+    }
+
+    .product-card:hover {
+      box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+
+    .product-image {
+      height: 200px;
+      object-fit: cover;
+      width: 100%;
+    }
+
+    .btn {
+      border-radius: var(--border-radius);
+      font-weight: 500;
+      transition: var(--transition);
+    }
+
+    .btn-primary {
+      background-color: var(--primary-color);
+      border-color: var(--primary-color);
+    }
+
+    .btn-primary:hover {
+      background-color: #0b5ed7;
+      border-color: #0a58ca;
+    }
+
+    .btn-outline-primary {
+      color: var(--primary-color);
+      border-color: var(--primary-color);
+    }
+
+    .btn-outline-primary:hover {
+      background-color: var(--primary-color);
+      border-color: var(--primary-color);
+      color: white;
+    }
+
+    .card {
+      border-radius: var(--border-radius);
+      border: 1px solid rgba(0,0,0,0.08);
+    }
+
+    .form-control, .form-select {
+      border-radius: var(--border-radius);
+    }
+
+    .form-control:focus, .form-select:focus {
+      border-color: #86b7fe;
+      box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+
+    .navbar-brand {
+      font-weight: 700;
+      color: var(--primary-color) !important;
+    }
+
+    .nav-link {
+      font-weight: 500;
+      color: var(--dark-color) !important;
+    }
+
+    .badge {
+      font-weight: 500;
+    }
+
+    .cart-badge {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background-color: var(--danger-color);
+      color: white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+    }
+
+    /* Dark mode fixes */
+    [data-theme='dark'] .card {
+      background-color: var(--light-color);
+      border-color: rgba(255,255,255,0.1);
+    }
+
+    [data-theme='dark'] .bg-white {
+      background-color: var(--light-color) !important;
+    }
+
+    [data-theme='dark'] .bg-light {
+      background-color: #343a40 !important;
+    }
+
+    [data-theme='dark'] .text-muted {
+      color: #adb5bd !important;
+    }
+
+    [data-theme='dark'] .border-bottom {
+      border-color: rgba(255,255,255,0.1) !important;
+    }
+
+    [data-theme='dark'] .border-top {
+      border-color: rgba(255,255,255,0.1) !important;
+    }
+
+    [data-theme='dark'] .list-group-item {
+      background-color: var(--light-color);
+      border-color: rgba(255,255,255,0.1);
+      color: var(--dark-color);
+    }
+
+    [data-theme='dark'] .dropdown-menu {
+      background-color: var(--light-color);
+      border-color: rgba(255,255,255,0.1);
+    }
+
+    [data-theme='dark'] .dropdown-item {
+      color: var(--dark-color);
+    }
+
+    [data-theme='dark'] .dropdown-item:hover {
+      background-color: rgba(255,255,255,0.1);
+    }
+
+    [data-theme='dark'] .modal-content {
+      background-color: var(--light-color);
+      color: var(--dark-color);
+    }
+
+    [data-theme='dark'] .modal-header {
+      border-color: rgba(255,255,255,0.1);
+    }
+
+    [data-theme='dark'] .btn-close {
+      filter: invert(1);
+    }
+
+    /* Cart modal styles */
+    .cart-item {
+      display: flex;
+      align-items: center;
+      padding: 1rem 0;
+      border-bottom: 1px solid rgba(0,0,0,0.1);
+    }
+
+    [data-theme='dark'] .cart-item {
+      border-color: rgba(255,255,255,0.1);
+    }
+
+    .cart-item-image {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: var(--border-radius);
+      margin-right: 1rem;
+    }
+
+    .cart-item-details {
+      flex: 1;
+    }
+
+    .cart-item-title {
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .cart-item-price {
+      color: var(--primary-color);
+      font-weight: 600;
+    }
+
+    .cart-item-quantity {
+      display: flex;
+      align-items: center;
+      margin-top: 0.5rem;
+    }
+
+    .quantity-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--light-color);
+      border: 1px solid var(--gray-color);
+      cursor: pointer;
+    }
+
+    [data-theme='dark'] .quantity-btn {
+      background-color: #495057;
+      border-color: #6c757d;
+      color: var(--dark-color);
+    }
+
+    .quantity-input {
+      width: 40px;
+      text-align: center;
+      margin: 0 0.5rem;
+      border: 1px solid var(--gray-color);
+      border-radius: var(--border-radius);
+      background-color: transparent;
+      color: var(--dark-color);
+    }
+
+    .cart-summary {
+      padding: 1rem;
+      background-color: rgba(0,0,0,0.03);
+      border-radius: var(--border-radius);
+      margin-top: 1rem;
+    }
+
+    [data-theme='dark'] .cart-summary {
+      background-color: rgba(255,255,255,0.05);
+    }
+
+    .cart-total {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--primary-color);
+    }
+
+    /* Loading animation */
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Global presence ribbon */
+    .global-presence { 
+      background: var(--presence-bg, #f8fafc); 
+    }
+    [data-theme='dark'] .global-presence { 
+      --presence-bg: #1f2428; 
+    }
+    .presence-text { 
+      color: var(--presence-text, #374151); 
+      font-weight:500; 
+      letter-spacing:.25px; 
+    }
+    [data-theme='dark'] .presence-text { 
+      --presence-text: #e5e7eb; 
+    }
+    .presence-badge { 
+      background: var(--presence-badge-bg,#ffffff); 
+      color: var(--presence-badge-text,#111827); 
+      border:1px solid var(--presence-badge-border,#d1d5db); 
+    }
+    [data-theme='dark'] .presence-badge { 
+      --presence-badge-bg:#2d3338; 
+      --presence-badge-text:#f3f4f6; 
+      --presence-badge-border:#4b5563; 
+    }
+
+    /* Restore original icon colors */
+    .icon-circle.bg-primary-subtle {
+      background-color: #cfe2ff !important;
+      color: #0d6efd !important;
+    }
+
+    .icon-circle.bg-success-subtle {
+      background-color: #d1e7dd !important;
+      color: #198754 !important;
+    }
+
+    .icon-circle.bg-warning-subtle {
+      background-color: #fff3cd !important;
+      color: #ffc107 !important;
+    }
+
+    .icon-circle.bg-info-subtle {
+      background-color: #cff4fc !important;
+      color: #0dcaf0 !important;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .hero-bg {
+        padding: 3rem 0;
+      }
+      
+      .display-5 {
+        font-size: 2rem;
+      }
+      
+      .cart-modal .modal-dialog {
+        margin: 0.5rem;
+      }
+      
+      .cart-item {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      .cart-item-image {
+        margin-bottom: 1rem;
+      }
+    }
+  </style>
 </head>
 <body>
   <!-- Announcement Bar -->
-  <div class="announcement text-center small text-white py-1">Wholesale savings: tiered discounts on bulk orders</div>
+  <div class="announcement text-center small text-white py-2">Wholesale savings: tiered discounts on bulk orders</div>
 
   <header class="navbar navbar-expand-lg navbar-light bg-white border-bottom sticky-top">
     <div class="container">
       <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="#">
-  <img src="/keohamlogo.jpg" alt="KEOHAMS" class="brand-logo" />
+        <img src="/keohamlogo.jpg" alt="KEOHAMS" class="brand-logo" />
         <span class="d-none d-sm-inline">KEOHAMS</span>
       </a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -66,7 +492,7 @@
             </ul>
           </li>
           <li class="nav-item">
-            <a class="nav-link position-relative" href="/cart" title="Cart">
+            <a class="nav-link position-relative" href="#" title="Cart" id="cartIcon">
               <span class="fs-5">🛒</span>
               <span id="navCartCount" class="badge rounded-pill text-bg-light ms-1 align-text-top">0</span>
             </a>
@@ -77,23 +503,6 @@
   </header>
 
   <!-- Global presence ribbon -->
-  <style>
-    /* Presence ribbon contrast tweaks */
-    .global-presence { background: var(--presence-bg, #f8fafc); }
-    [data-theme='dark'] .global-presence { --presence-bg: #1f2428; }
-    .presence-text { color: var(--presence-text, #374151); font-weight:500; letter-spacing:.25px; }
-    [data-theme='dark'] .presence-text { --presence-text: #e5e7eb; }
-    .presence-badge { 
-      background: var(--presence-badge-bg,#ffffff); 
-      color: var(--presence-badge-text,#111827); 
-      border:1px solid var(--presence-badge-border,#d1d5db); 
-    }
-    [data-theme='dark'] .presence-badge { 
-      --presence-badge-bg:#2d3338; 
-      --presence-badge-text:#f3f4f6; 
-      --presence-badge-border:#4b5563; 
-    }
-  </style>
   <div class="global-presence text-center border-bottom">
     <div class="container py-2 d-flex flex-wrap justify-content-center align-items-center gap-2 gap-md-3 small">
       <span class="presence-text">Registered in</span>
@@ -139,14 +548,14 @@
             <span class="badge bg-white border fw-semibold"><span class="me-1">🇨🇳</span>China</span>
           </div>
           <p>Keohams Deluxe Enterprises is a distinguished Nigerian and Chinese company specializing in the sale of high-quality tailoring materials (general merchandise). With a focus on providing premium fabrics, accessories, and specialty items.</p>
-          <p>The company's motto, <strong>“Style is in the Details”</strong>, encapsulates its dedication to delivering exceptional products that emphasize the importance of meticulous craftsmanship and intricate details in achieving superior style and quality.</p>
+          <p>The company's motto, <strong>"Style is in the Details"</strong>, encapsulates its dedication to delivering exceptional products that emphasize the importance of meticulous craftsmanship and intricate details in achieving superior style and quality.</p>
           <p>The brand identity reflects a matured, modern, and luxurious aesthetic, complementing its esteemed reputation within the industry.</p>
           <p>Keohams Deluxe Enterprises continues to be a preferred choice for tailors, fashion designers, and individuals seeking top-tier tailoring materials in Nigeria.</p>
         </div>
         <div class="col-lg-6">
           <div class="p-4 bg-white shadow-sm rounded-4 text-center">
             <img src="/keohamlogo.jpg" alt="KEOHAMS" class="img-fluid" style="max-height: 180px; width:auto;" />
-            <div class="mt-3 fst-italic text-gradient">“Style is in the Details.”</div>
+            <div class="mt-3 fst-italic text-gradient">"Style is in the Details."</div>
           </div>
         </div>
       </div>
@@ -388,30 +797,61 @@
     </div>
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script type="module" src="/src/js/global.js"></script>
-  <script type="module" src="/src/js/main.js"></script>
-  <script type="module">
-    const API_BASE = 'http://localhost:4000/api';
-    async function fetchJSON(u){ const r = await fetch(u); if(!r.ok) throw new Error(); return r.json(); }
-    async function loadBlogPreview(){
-      try {
-        const data = await fetchJSON(`${API_BASE}/blog?meta=1&page=1&pageSize=3`);
-        const posts = data.data.filter(p=>!p.require_login).slice(0,3);
-        const wrap = document.getElementById('homeBlogPreview');
-        wrap.innerHTML = posts.map(p=>`<div class='col-12 col-md-4'>
-          <article class='p-3 bg-white h-100 rounded-3 shadow-sm blog-preview-card' onclick="location.href='/blog/${encodeURIComponent(p.slug)}'" style='cursor:pointer;'>
-            <h3 class='h6 mb-1'>${p.title}</h3>
-            <div class='small text-muted mb-2'>${p.published_at? new Date(p.published_at).toLocaleDateString(): ''}</div>
-            <p class='small m-0'>${(p.excerpt || (p.content||'').slice(0,100)).replace(/\n+/g,' ')}</p>
-          </article>
-        </div>`).join('');
-      } catch(e){
-        // silent fail
-      }
-    }
-    loadBlogPreview();
-  </script>
+  <!-- Cart Modal -->
+  <div class="modal fade cart-modal" id="cartModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Your Cart</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="cartItems">
+            <!-- Cart items will be populated here -->
+          </div>
+          <div class="cart-summary">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span>Subtotal:</span>
+              <span id="cartSubtotal">$0.00</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span>Shipping:</span>
+              <span id="cartShipping">Calculated at checkout</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <span class="fw-bold">Total:</span>
+              <span class="cart-total" id="cartTotal">$0.00</span>
+            </div>
+            <div class="d-grid gap-2">
+              <button class="btn btn-primary" id="requestQuoteBtn">Request Quotation</button>
+              <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Continue Shopping</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Registration Prompt Modal -->
+  <div class="modal fade" id="registerPromptModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Create an Account</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center">
+          <i class="fas fa-user-plus fa-3x text-primary mb-3"></i>
+          <h4>Register to Request Quotation</h4>
+          <p class="text-muted mb-4">You need to create an account to request quotations and access wholesale pricing.</p>
+          <div class="d-grid gap-2">
+            <a href="/register" class="btn btn-primary">Create Account</a>
+            <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Not Now</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Sign In Modal -->
   <div class="modal fade" id="signinModal" tabindex="-1" aria-hidden="true">
@@ -467,45 +907,323 @@
     </div>
   </div>
 
-  <!-- Create Account Modal -->
-  <div class="modal fade" id="signupModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Create Account</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="/src/js/global.js"></script>
+  <script type="module" src="/src/js/main.js"></script>
+  <script type="module">
+  <script>
+    // Cart functionality
+    let cart = JSON.parse(localStorage.getItem('keohamsCart')) || [];
+    
+    // Update cart count in navbar
+    function updateCartCount() {
+      const cartCount = document.getElementById('navCartCount');
+      const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+      cartCount.textContent = totalItems;
+    }
+    
+    // Add to cart
+    function addToCart(product) {
+      const existingItem = cart.find(item => item.id === product.id);
+      
+      if (existingItem) {
+        existingItem.quantity += 1;
+      } else {
+        cart.push({
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          image: product.image,
+          quantity: 1
+        });
+      }
+      
+      localStorage.setItem('keohamsCart', JSON.stringify(cart));
+      updateCartCount();
+      showCartNotification();
+    }
+    
+    // Show cart notification
+    function showCartNotification() {
+      const notification = document.createElement('div');
+      notification.className = 'position-fixed bottom-0 end-0 p-3';
+      notification.style.zIndex = '11';
+      notification.innerHTML = `
+        <div class="toast show" role="alert">
+          <div class="toast-header">
+            <i class="fas fa-check-circle text-success me-2"></i>
+            <strong class="me-auto">Added to Cart</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+          </div>
+          <div class="toast-body">
+            Item added to your cart successfully.
+          </div>
         </div>
-        <div class="modal-body">
-          <form id="signupForm" class="vstack gap-3">
-            <div>
-              <label class="form-label">Full Name</label>
-              <input type="text" class="form-control" id="signupName" required />
-            </div>
-            <div>
-              <label class="form-label">Email</label>
-              <input type="email" class="form-control" id="signupEmail" required />
-            </div>
-            <div>
-              <label class="form-label">Password</label>
-              <input type="password" class="form-control" id="signupPassword" minlength="6" required />
-            </div>
-            <div class="row g-2">
-              <div class="col-6">
-                <label class="form-label">Phone</label>
-                <input type="text" class="form-control" id="signupPhone" />
+      `;
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        notification.remove();
+      }, 3000);
+    }
+    
+    // Remove from cart
+    function removeFromCart(productId) {
+      cart = cart.filter(item => item.id !== productId);
+      localStorage.setItem('keohamsCart', JSON.stringify(cart));
+      updateCartCount();
+      renderCartItems();
+    }
+    
+    // Update quantity in cart
+    function updateQuantity(productId, newQuantity) {
+      if (newQuantity < 1) {
+        removeFromCart(productId);
+        return;
+      }
+      
+      const item = cart.find(item => item.id === productId);
+      if (item) {
+        item.quantity = newQuantity;
+        localStorage.setItem('keohamsCart', JSON.stringify(cart));
+        updateCartCount();
+        renderCartItems();
+      }
+    }
+    
+    // Render cart items in modal
+    function renderCartItems() {
+      const cartItems = document.getElementById('cartItems');
+      const cartSubtotal = document.getElementById('cartSubtotal');
+      const cartTotal = document.getElementById('cartTotal');
+      
+      if (cart.length === 0) {
+        cartItems.innerHTML = `
+          <div class="text-center py-5">
+            <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+            <h5>Your cart is empty</h5>
+            <p class="text-muted">Add some products to get started</p>
+          </div>
+        `;
+        cartSubtotal.textContent = '$0.00';
+        cartTotal.textContent = '$0.00';
+        return;
+      }
+      
+      let subtotal = 0;
+      cartItems.innerHTML = cart.map(item => {
+        const itemTotal = item.price * item.quantity;
+        subtotal += itemTotal;
+        
+        return `
+          <div class="cart-item">
+            <img src="${item.image}" alt="${item.name}" class="cart-item-image">
+            <div class="cart-item-details">
+              <div class="cart-item-title">${item.name}</div>
+              <div class="cart-item-price">$${item.price.toFixed(2)}</div>
+              <div class="cart-item-quantity">
+                <button class="quantity-btn" onclick="updateQuantity(${item.id}, ${item.quantity - 1})">-</button>
+                <input type="number" class="quantity-input" value="${item.quantity}" min="1" onchange="updateQuantity(${item.id}, parseInt(this.value))">
+                <button class="quantity-btn" onclick="updateQuantity(${item.id}, ${item.quantity + 1})">+</button>
+                <button class="btn btn-sm btn-outline-danger ms-3" onclick="removeFromCart(${item.id})">
+                  <i class="fas fa-trash"></i>
+                </button>
               </div>
-              <div class="col-6">
-                <label class="form-label">Address</label>
-                <input type="text" class="form-control" id="signupAddress" />
+            </div>
+            <div class="cart-item-total fw-bold">$${itemTotal.toFixed(2)}</div>
+          </div>
+        `;
+      }).join('');
+      
+      cartSubtotal.textContent = `$${subtotal.toFixed(2)}`;
+      cartTotal.textContent = `$${subtotal.toFixed(2)}`;
+    }
+    
+    // Dark mode functionality
+    function initDarkMode() {
+      const themeToggle = document.querySelector('[data-theme-toggle]');
+      const currentTheme = localStorage.getItem('theme') || 'light';
+      
+      document.documentElement.setAttribute('data-theme', currentTheme);
+      
+      themeToggle.addEventListener('click', () => {
+        const newTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+        themeToggle.textContent = newTheme === 'dark' ? 'Light Mode' : 'Dark Mode';
+      });
+      
+      themeToggle.textContent = currentTheme === 'dark' ? 'Light Mode' : 'Dark Mode';
+    }
+    
+    // Sample product data
+    const sampleProducts = [
+      {
+        id: 1,
+        name: "Premium Cotton Fabric",
+        price: 12.99,
+        image: "https://via.placeholder.com/300x200?text=Cotton+Fabric",
+        category: "Fabrics",
+        stock: "IN_STOCK"
+      },
+      {
+        id: 2,
+        name: "Silk Blend Material",
+        price: 24.99,
+        image: "https://via.placeholder.com/300x200?text=Silk+Blend",
+        category: "Fabrics",
+        stock: "IN_STOCK"
+      },
+      {
+        id: 3,
+        name: "Designer Buttons Pack",
+        price: 8.50,
+        image: "https://via.placeholder.com/300x200?text=Designer+Buttons",
+        category: "Accessories",
+        stock: "PREORDER"
+      },
+      {
+        id: 4,
+        name: "Professional Sewing Kit",
+        price: 35.99,
+        image: "https://via.placeholder.com/300x200?text=Sewing+Kit",
+        category: "Tools",
+        stock: "IN_STOCK"
+      },
+      {
+        id: 5,
+        name: "Linen Fabric Roll",
+        price: 18.75,
+        image: "https://via.placeholder.com/300x200?text=Linen+Fabric",
+        category: "Fabrics",
+        stock: "OUT_OF_STOCK"
+      },
+      {
+        id: 6,
+        name: "Zipper Assortment",
+        price: 12.25,
+        image: "https://via.placeholder.com/300x200?text=Zippers",
+        category: "Accessories",
+        stock: "IN_STOCK"
+      }
+    ];
+    
+    // Render products
+    function renderProducts() {
+      const productGrid = document.getElementById('productGrid');
+      const stockFilter = document.getElementById('stockFilter').value;
+      
+      let filteredProducts = sampleProducts;
+      if (stockFilter) {
+        filteredProducts = sampleProducts.filter(product => product.stock === stockFilter);
+      }
+      
+      productGrid.innerHTML = filteredProducts.map(product => {
+        let stockBadge = '';
+        if (product.stock === 'IN_STOCK') {
+          stockBadge = '<span class="badge bg-success">In Stock</span>';
+        } else if (product.stock === 'PREORDER') {
+          stockBadge = '<span class="badge bg-warning">Preorder</span>';
+        } else {
+          stockBadge = '<span class="badge bg-danger">Out of Stock</span>';
+        }
+        
+        return `
+          <div class="col-12 col-sm-6 col-lg-4">
+            <div class="card product-card h-100">
+              <img src="${product.image}" class="card-img-top product-image" alt="${product.name}">
+              <div class="card-body d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <h5 class="card-title">${product.name}</h5>
+                  ${stockBadge}
+                </div>
+                <p class="card-text text-muted small">${product.category}</p>
+                <div class="mt-auto">
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="h5 text-primary mb-0">$${product.price.toFixed(2)}</span>
+                  </div>
+                  <button class="btn btn-primary w-100 ${product.stock === 'OUT_OF_STOCK' ? 'disabled' : ''}" 
+                    onclick="addToCart(${JSON.stringify(product).replace(/"/g, '&quot;')})">
+                    <i class="fas fa-cart-plus me-2"></i>Add to Cart
+                  </button>
+                </div>
               </div>
             </div>
-            <button class="btn btn-primary w-100" type="submit">Create Account</button>
-            <p class="small text-muted mt-2">By creating an account, you agree to our Terms and Privacy Policy.</p>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
-
+          </div>
+        `;
+      }).join('');
+    }
+    
+    // Initialize categories
+    function initCategories() {
+      const categories = [...new Set(sampleProducts.map(product => product.category))];
+      const categoryList = document.getElementById('categoryList');
+      const heroCategories = document.getElementById('heroCategories');
+      
+      categoryList.innerHTML = categories.map(category => `
+        <a href="#" class="list-group-item list-group-item-action">${category}</a>
+      `).join('');
+      
+      heroCategories.innerHTML = categories.map(category => `
+        <span class="badge bg-light text-dark border">${category}</span>
+      `).join('');
+    }
+    
+    // Initialize the page
+    document.addEventListener('DOMContentLoaded', function() {
+      // Set current year in footer
+      document.getElementById('year').textContent = new Date().getFullYear();
+      
+      // Initialize dark mode
+      initDarkMode();
+      
+      // Initialize cart
+      updateCartCount();
+      
+      // Initialize products and categories
+      renderProducts();
+      initCategories();
+      
+      // Cart icon click event
+      document.getElementById('cartIcon').addEventListener('click', function(e) {
+        e.preventDefault();
+        renderCartItems();
+        const cartModal = new bootstrap.Modal(document.getElementById('cartModal'));
+        cartModal.show();
+      });
+      
+      // Request quote button event
+      document.getElementById('requestQuoteBtn').addEventListener('click', function() {
+        // Check if user is logged in (simulated)
+        const isLoggedIn = false; // This would normally check authentication status
+        
+        if (isLoggedIn) {
+          // Proceed with quote request
+          alert('Quote request submitted! Our team will contact you shortly.');
+          const cartModal = bootstrap.Modal.getInstance(document.getElementById('cartModal'));
+          cartModal.hide();
+        } else {
+          // Show registration prompt
+          const cartModal = bootstrap.Modal.getInstance(document.getElementById('cartModal'));
+          cartModal.hide();
+          const registerModal = new bootstrap.Modal(document.getElementById('registerPromptModal'));
+          registerModal.show();
+        }
+      });
+      
+      // Stock filter change event
+      document.getElementById('stockFilter').addEventListener('change', renderProducts);
+      
+      // Load more button event
+      document.getElementById('loadMoreBtn').addEventListener('click', function() {
+        this.innerHTML = '<span class="loading"></span> Loading...';
+        setTimeout(() => {
+          // Simulate loading more products
+          this.textContent = 'Load more';
+          alert('More products loaded!');
+        }, 1500);
+      });
+    });
+  </script>
 </body>
 </html>

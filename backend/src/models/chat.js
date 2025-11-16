@@ -27,9 +27,12 @@ async function listThreadsForUser(user_id) {
   return db(THREADS)
     .leftJoin('products', 'products.id', '=', `${THREADS}.product_id`)
     .leftJoin({ th: TH_HIDES }, function(){ this.on('th.thread_id', '=', `${THREADS}.id`).andOn('th.user_id', '=', db.raw('?', [user_id])); })
-    .select(`${THREADS}.*`, 'products.title as product_title')
+    .select(
+      `${THREADS}.*`, 
+      'products.title as product_title',
+      db.raw('CASE WHEN th.id IS NOT NULL THEN 1 ELSE 0 END as is_hidden')
+    )
     .where(`${THREADS}.user_id`, user_id)
-    .whereNull('th.id')
     .orderBy(`${THREADS}.created_at`, 'desc');
 }
 
@@ -57,8 +60,10 @@ async function listMessages(thread_id, { limit = 100, beforeId, viewer_id } = {}
     let q = db(MESSAGES)
       .leftJoin({ mh: MSG_HIDES }, function(){ this.on('mh.message_id', '=', `${MESSAGES}.id`).andOn('mh.user_id', '=', db.raw('?', [viewer_id||0])); })
       .where(`${MESSAGES}.thread_id`, thread_id)
-      .whereNull('mh.id')
-      .select(`${MESSAGES}.*`)
+      .select(
+        `${MESSAGES}.*`,
+        db.raw('CASE WHEN mh.id IS NOT NULL THEN 1 ELSE 0 END as is_hidden')
+      )
       .orderBy(`${MESSAGES}.id`, 'desc');
     if (beforeId) q = q.andWhere('id', '<', beforeId);
     const rows = await q.limit(limit);

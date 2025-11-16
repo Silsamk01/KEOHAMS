@@ -1,13 +1,15 @@
 const Affiliate = require('../models/affiliate');
 const AffiliateSale = require('../models/affiliateSale');
 const CommissionRecord = require('../models/commissionRecord');
+const AffiliateWithdrawal = require('../models/affiliateWithdrawal');
 const CommissionService = require('../services/commissionService');
 const Users = require('../models/user');
 const db = require('../config/db');
 const { sendMail } = require('../utils/email');
 
 /**
- * Register a new affiliate
+ * Register a new affiliate (for linking existing shop users)
+ * Note: Standalone affiliate registration is handled by affiliateAuthController
  */
 exports.register = async (req, res) => {
   try {
@@ -89,9 +91,9 @@ exports.register = async (req, res) => {
  */
 exports.getDashboard = async (req, res) => {
   try {
-    const { user_id } = req.params;
+    const affiliate_id = req.affiliate.id;
     
-    const affiliate = await Affiliate.findByUserId(user_id);
+    const affiliate = await Affiliate.findById(affiliate_id);
     if (!affiliate) {
       return res.status(404).json({ message: 'Affiliate not found' });
     }
@@ -110,10 +112,10 @@ exports.getDashboard = async (req, res) => {
  */
 exports.getNetworkTree = async (req, res) => {
   try {
-    const { user_id } = req.params;
+    const affiliate_id = req.affiliate.id;
     const { type = 'downline', levels = 5 } = req.query;
     
-    const affiliate = await Affiliate.findByUserId(user_id);
+    const affiliate = await Affiliate.findById(affiliate_id);
     if (!affiliate) {
       return res.status(404).json({ message: 'Affiliate not found' });
     }
@@ -138,11 +140,11 @@ exports.getNetworkTree = async (req, res) => {
  */
 exports.recordSale = async (req, res) => {
   try {
-    const { user_id } = req.params;
+    const affiliate_id = req.affiliate.id;
     const { customer_email, sale_amount, payment_method, payment_details, sale_reference } = req.body;
     
     // Find affiliate
-    const affiliate = await Affiliate.findByUserId(user_id);
+    const affiliate = await Affiliate.findById(affiliate_id);
     if (!affiliate) {
       return res.status(404).json({ message: 'Affiliate not found' });
     }
@@ -196,10 +198,10 @@ exports.recordSale = async (req, res) => {
  */
 exports.getSales = async (req, res) => {
   try {
-    const { user_id } = req.params;
+    const affiliate_id = req.affiliate.id;
     const { page = 1, pageSize = 20, status } = req.query;
     
-    const affiliate = await Affiliate.findByUserId(user_id);
+    const affiliate = await Affiliate.findById(affiliate_id);
     if (!affiliate) {
       return res.status(404).json({ message: 'Affiliate not found' });
     }
@@ -223,10 +225,10 @@ exports.getSales = async (req, res) => {
  */
 exports.getCommissions = async (req, res) => {
   try {
-    const { user_id } = req.params;
+    const affiliate_id = req.affiliate.id;
     const { page = 1, pageSize = 20, status } = req.query;
     
-    const affiliate = await Affiliate.findByUserId(user_id);
+    const affiliate = await Affiliate.findById(affiliate_id);
     if (!affiliate) {
       return res.status(404).json({ message: 'Affiliate not found' });
     }
@@ -249,14 +251,14 @@ exports.getCommissions = async (req, res) => {
  */
 exports.getCommissionPreview = async (req, res) => {
   try {
-    const { user_id } = req.params;
+    const affiliate_id = req.affiliate.id;
     const { sale_amount } = req.query;
     
     if (!sale_amount || isNaN(sale_amount) || parseFloat(sale_amount) <= 0) {
       return res.status(400).json({ message: 'Valid sale amount required' });
     }
     
-    const affiliate = await Affiliate.findByUserId(user_id);
+    const affiliate = await Affiliate.findById(affiliate_id);
     if (!affiliate) {
       return res.status(404).json({ message: 'Affiliate not found' });
     }
@@ -303,16 +305,16 @@ exports.getByReferralCode = async (req, res) => {
  */
 exports.updateProfile = async (req, res) => {
   try {
-    const { user_id } = req.params;
+    const affiliate_id = req.affiliate.id;
     const updates = req.body;
     
-    const affiliate = await Affiliate.findByUserId(user_id);
+    const affiliate = await Affiliate.findById(affiliate_id);
     if (!affiliate) {
       return res.status(404).json({ message: 'Affiliate not found' });
     }
     
-    // Only allow updating specific fields
-    const allowedFields = ['is_active'];
+    // Only allow updating specific fields for standalone affiliates
+    const allowedFields = ['name', 'phone', 'is_active'];
     const filteredUpdates = {};
     
     for (const field of allowedFields) {
@@ -344,9 +346,9 @@ exports.updateProfile = async (req, res) => {
  */
 exports.getStats = async (req, res) => {
   try {
-    const { user_id } = req.params;
+    const affiliate_id = req.affiliate.id;
     
-    const affiliate = await Affiliate.findByUserId(user_id);
+    const affiliate = await Affiliate.findById(affiliate_id);
     if (!affiliate) {
       return res.status(404).json({ message: 'Affiliate not found' });
     }
@@ -357,5 +359,153 @@ exports.getStats = async (req, res) => {
   } catch (error) {
     console.error('Get stats error:', error);
     res.status(500).json({ message: 'Failed to get statistics', error: error.message });
+  }
+};
+
+/**
+ * Request a withdrawal
+ */
+exports.requestWithdrawal = async (req, res) => {
+  try {
+    const affiliate_id = req.affiliate.id;
+    const { amount, method, payment_details } = req.body;
+    
+    const affiliate = await Affiliate.findById(affiliate_id);
+    if (!affiliate) {
+      return res.status(404).json({ message: 'Affiliate not found' });
+    }
+    
+    if (!affiliate.is_active) {
+      return res.status(400).json({ message: 'Affiliate account is not active' });
+    }
+    
+    // Validate required fields
+    if (!amount || !method || !payment_details) {
+      return res.status(400).json({ message: 'Missing required fields: amount, method, payment_details' });
+    }
+    
+    // Validate withdrawal amount
+    await AffiliateWithdrawal.validateWithdrawalAmount(affiliate.id, amount);
+    
+    // Get current affiliate balance
+    const currentAffiliate = await Affiliate.findById(affiliate.id);
+    const currentBalance = parseFloat(currentAffiliate.available_balance || 0);
+    
+    // Create withdrawal request
+    const withdrawal = await AffiliateWithdrawal.create({
+      affiliate_id: affiliate.id,
+      amount: parseFloat(amount),
+      method,
+      payment_details
+    });
+    
+    // Deduct from available balance (will be restored if cancelled)
+    await Affiliate.updateBalances(affiliate.id, {
+      available_balance: currentBalance - parseFloat(amount)
+    });
+    
+    // Send notification email
+    try {
+      await sendMail({
+        to: affiliate.email,
+        subject: 'Withdrawal Request Submitted',
+        html: `
+          <h2>Withdrawal Request Submitted</h2>
+          <p>Hi ${affiliate.name},</p>
+          <p>Your withdrawal request has been submitted successfully.</p>
+          <ul>
+            <li><strong>Amount:</strong> $${parseFloat(amount).toFixed(2)}</li>
+            <li><strong>Method:</strong> ${method}</li>
+            <li><strong>Status:</strong> PENDING</li>
+          </ul>
+          <p>Your request will be reviewed and processed within 1-3 business days.</p>
+          <p>Best regards,<br>KEOHAMS Team</p>
+        `
+      });
+    } catch (emailError) {
+      console.error('Failed to send withdrawal email:', emailError);
+    }
+    
+    res.status(201).json({
+      message: 'Withdrawal request submitted successfully',
+      withdrawal
+    });
+  } catch (error) {
+    console.error('Request withdrawal error:', error);
+    res.status(500).json({ message: 'Failed to request withdrawal', error: error.message });
+  }
+};
+
+/**
+ * Get affiliate's withdrawals
+ */
+exports.getWithdrawals = async (req, res) => {
+  try {
+    const affiliate_id = req.affiliate.id;
+    const { page = 1, pageSize = 20, status } = req.query;
+    
+    const affiliate = await Affiliate.findById(affiliate_id);
+    if (!affiliate) {
+      return res.status(404).json({ message: 'Affiliate not found' });
+    }
+    
+    const withdrawals = await AffiliateWithdrawal.getAffiliateWithdrawals(affiliate.id, {
+      page: parseInt(page),
+      pageSize: parseInt(pageSize),
+      status
+    });
+    
+    res.json(withdrawals);
+  } catch (error) {
+    console.error('Get withdrawals error:', error);
+    res.status(500).json({ message: 'Failed to get withdrawals', error: error.message });
+  }
+};
+
+/**
+ * Cancel a withdrawal request (only if pending)
+ */
+exports.cancelWithdrawal = async (req, res) => {
+  try {
+    const affiliate_id = req.affiliate.id;
+    const { withdrawal_id } = req.params;
+    
+    const affiliate = await Affiliate.findById(affiliate_id);
+    if (!affiliate) {
+      return res.status(404).json({ message: 'Affiliate not found' });
+    }
+    
+    const withdrawal = await AffiliateWithdrawal.findById(withdrawal_id);
+    if (!withdrawal) {
+      return res.status(404).json({ message: 'Withdrawal not found' });
+    }
+    
+    if (withdrawal.affiliate_id !== affiliate.id) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+    
+    if (withdrawal.status !== 'PENDING') {
+      return res.status(400).json({ message: 'Only pending withdrawals can be cancelled' });
+    }
+    
+    // Get current affiliate balance
+    const currentAffiliate = await Affiliate.findById(affiliate.id);
+    const currentBalance = parseFloat(currentAffiliate.available_balance || 0);
+    
+    // Restore balance
+    await Affiliate.updateBalances(affiliate.id, {
+      available_balance: currentBalance + parseFloat(withdrawal.amount)
+    });
+    
+    // Cancel withdrawal
+    await AffiliateWithdrawal.updateStatus(withdrawal_id, 'CANCELLED');
+    
+    res.json({
+      message: 'Withdrawal cancelled successfully',
+      withdrawal: await AffiliateWithdrawal.findById(withdrawal_id)
+    });
+  } catch (error) {
+    console.error('Cancel withdrawal error:', error);
+    res.status(500).json({ message: 'Failed to cancel withdrawal', error: error.message });
   }
 };

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Become an Affiliate - KEOHAMS</title>
+    <link rel="icon" type="image/jpeg" href="/keohamlogo.jpg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="/src/css/styles.css" rel="stylesheet">
@@ -182,12 +183,8 @@
                         
                         <div id="alertContainer"></div>
 
-                        <!-- Step 1: Create Regular Account -->
+                        <!-- Standalone Affiliate Registration -->
                         <div id="step1" class="registration-step">
-                            <div class="alert alert-info">
-                                <i class="fas fa-info-circle me-2"></i>
-                                <strong>Step 1 of 2:</strong> First, create your KEOHAMS account
-                            </div>
                             
                             <form id="accountForm">
                                 <div class="mb-3">
@@ -234,10 +231,20 @@
                                     <textarea class="form-control" id="address" rows="2"></textarea>
                                 </div>
                                 
+                                <div class="mb-3">
+                                    <label for="referralCode" class="form-label">Referral Code (Optional)</label>
+                                    <input type="text" class="form-control" id="referralCode" placeholder="Enter referral code if you were referred">
+                                    <div class="form-text">Leave blank if you don't have a referral code</div>
+                                </div>
+                                
                                 <div class="mb-3 form-check">
                                     <input type="checkbox" class="form-check-input" id="terms" required>
                                     <label class="form-check-label" for="terms">
-                                        I agree to the Terms & Conditions and Privacy Policy
+                                        I have read and agree to the 
+                                        <a href="/terms-and-conditions" target="_blank" class="text-decoration-none">Terms & Conditions</a> 
+                                        and 
+                                        <a href="/privacy-policy" target="_blank" class="text-decoration-none">Privacy Policy</a>
+                                        <span class="text-danger">*</span>
                                     </label>
                                 </div>
                                 
@@ -350,7 +357,7 @@
         let createdUserId = null;
         let authToken = null;
 
-        // Handle account creation form
+        // Handle standalone affiliate registration form
         document.getElementById('accountForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -362,13 +369,26 @@
                 return;
             }
             
+            // Get captcha (if implemented)
+            const captchaToken = null; // Add captcha implementation if needed
+            const captchaAnswer = null;
+            
+            const termsAccepted = document.getElementById('terms').checked;
+            
+            if (!termsAccepted) {
+                showAlert('You must accept the Terms & Conditions and Privacy Policy to register.', 'danger');
+                return;
+            }
+            
             const formData = {
                 name: document.getElementById('fullName').value,
                 email: document.getElementById('email').value,
                 password: password,
                 phone: document.getElementById('phone').value || null,
-                address: document.getElementById('address').value || null,
-                country: document.getElementById('country').value || null
+                parent_referral_code: document.getElementById('referralCode').value.trim() || null,
+                captchaToken: captchaToken,
+                captchaAnswer: captchaAnswer,
+                termsAccepted: true
             };
             
             const btn = document.getElementById('createAccountBtn');
@@ -376,7 +396,7 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creating account...';
             
             try {
-                const response = await fetch('/api/auth/register', {
+                const response = await fetch('/api/affiliate/auth/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(formData)
@@ -388,73 +408,16 @@
                     throw new Error(data.message || 'Registration failed');
                 }
                 
-                // Store user ID and token for next step
-                createdUserId = data.user.id;
-                authToken = data.token;
-                
-                // Show step 2
+                // Show success state
                 document.getElementById('step1').classList.add('d-none');
-                document.getElementById('step2').classList.remove('d-none');
+                document.getElementById('successState').classList.remove('d-none');
                 
-                showAlert('Account created successfully! Now complete your affiliate registration.', 'success');
+                showAlert('Check your email for a link. If it doesn\'t appear within a few minutes, check your spam folder and if in Spam move to inbox.', 'success');
                 
             } catch (error) {
                 showAlert(error.message, 'danger');
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-user-plus me-2"></i>Create Account';
-            }
-        });
-
-        // Handle affiliate registration form
-        document.getElementById('affiliateForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const referralCode = document.getElementById('referralCode').value.trim();
-            
-            const btn = document.getElementById('joinAffiliateBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Joining program...';
-            
-            try {
-                const response = await fetch('/api/affiliate/register', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
-                    body: JSON.stringify({
-                        user_id: createdUserId,
-                        parent_referral_code: referralCode || null
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (!response.ok) {
-                    throw new Error(data.message || 'Affiliate registration failed');
-                }
-                
-                // Show success state
-                document.getElementById('step2').classList.add('d-none');
-                document.getElementById('successState').classList.remove('d-none');
-                
-                // Store token in localStorage
-                localStorage.setItem('token', authToken);
-                
-                // Check for redirect URL
-                const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
-                if (redirectUrl && redirectUrl.includes('/affiliate')) {
-                    sessionStorage.removeItem('redirectAfterLogin');
-                    // Auto-redirect after 2 seconds
-                    setTimeout(() => {
-                        window.location.href = redirectUrl;
-                    }, 2000);
-                }
-                
-            } catch (error) {
-                showAlert(error.message, 'danger');
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-rocket me-2"></i>Join Affiliate Program';
             }
         });
 

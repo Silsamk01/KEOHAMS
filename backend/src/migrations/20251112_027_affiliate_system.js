@@ -84,15 +84,11 @@ exports.up = async function(knex) {
     t.unique('level');
   });
 
-  // Insert default commission settings
+  // Insert default commission settings (3 levels max: direct + 2 upline)
   await knex('commission_settings').insert([
     { level: 0, rate: 10.00, is_active: true }, // Direct seller: 10%
     { level: 1, rate: 2.50, is_active: true }, // First upline: 2.5%
-    { level: 2, rate: 2.50, is_active: true }, // Second upline: 2.5%
-    { level: 3, rate: 2.50, is_active: true }, // Third upline: 2.5%
-    { level: 4, rate: 2.50, is_active: true }, // Fourth upline: 2.5%
-    { level: 5, rate: 2.50, is_active: true }, // Fifth upline: 2.5%
-    { level: 6, rate: 2.50, is_active: true }  // Sixth upline: 2.5%
+    { level: 2, rate: 2.50, is_active: true }  // Second upline: 2.5%
   ]);
 
   // Affiliate Withdrawals table - tracks payout requests

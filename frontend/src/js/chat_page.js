@@ -23,14 +23,19 @@ async function loadThreads(){
     const a = document.createElement('button');
     a.type = 'button';
     a.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
-    a.textContent = t.subject || ('Product #' + (t.product_id||''));
+    
+    const textContent = t.subject || ('Product #' + (t.product_id||''));
+    
+    a.innerHTML = escapeHtml(textContent);
     a.dataset.threadId = t.id;
+    
     if (t.unread_count) {
       const span = document.createElement('span');
       span.className = 'badge bg-primary rounded-pill';
       span.textContent = t.unread_count;
       a.appendChild(span);
     }
+    
     a.addEventListener('click', ()=> selectThread(t.id));
     if (t.id === activeThreadId) a.classList.add('active');
     list.appendChild(a);
@@ -44,21 +49,8 @@ async function selectThread(thread_id){
   renderMessages(msgs);
   wireComposer();
   qs('chatHeader').textContent = 'Thread #' + thread_id;
-  const hideBtn = qs('hideThreadBtn'); hideBtn.classList.remove('d-none'); hideBtn.onclick = () => hideThread(thread_id);
   markSeen(thread_id);
   highlightActive();
-}
-
-async function hideThread(thread_id){
-  if (!confirm('Hide this conversation?')) return;
-  try {
-    await fetch(`${API_BASE}/chats/threads/${thread_id}/hide`, { method:'POST', headers: { Authorization: `Bearer ${token()}` } });
-    if (activeThreadId === thread_id) {
-      activeThreadId = null; qs('chatMessagesPane').innerHTML = ''; qs('chatHeader').textContent = 'Select a thread';
-      qs('chatInput').disabled = true; qs('chatSendBtn').disabled = true;
-    }
-    loadThreads();
-  } catch(e){ alert('Failed to hide'); }
 }
 
 function highlightActive(){
@@ -91,6 +83,7 @@ function appendMessage(m){
   const bubble = document.createElement('div');
   bubble.className = 'px-3 py-2 rounded-3 ' + (mine ? 'bg-primary text-white' : 'bg-light');
   bubble.style.maxWidth='80%';
+  
   const time = new Date(m.created_at).toLocaleTimeString();
   bubble.innerHTML = `<div class="small">${escapeHtml(m.body)}</div><div class="small text-muted mt-1">${time}</div>`;
   wrap.appendChild(bubble);

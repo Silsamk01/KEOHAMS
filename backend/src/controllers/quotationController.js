@@ -155,6 +155,14 @@ exports.adminMarkPaid = async (req,res)=>{
   const id = parseInt(req.params.id,10);
   try {
     const q = await Quotation.markPaid(id);
+    
+    // Automatically create affiliate sale if customer used a referral code
+    try {
+      await createAffiliateSaleFromQuotation(q);
+    } catch (affErr) {
+      console.warn('Failed to create affiliate sale:', affErr.message);
+    }
+    
     res.json(q);
   } catch(e){ res.status(400).json({ message: e.message || 'Failed' }); }
 };
@@ -207,6 +215,13 @@ exports.paystackWebhook = async (req, res) => {
 
         // Email user
         await maybeEmail(q.user_id, 'Payment Confirmed', `<p>Your payment for quotation <strong>${q.reference}</strong> has been confirmed. We will process your order soon.</p>`);
+        
+        // Automatically create affiliate sale if customer used a referral code
+        try {
+          await createAffiliateSaleFromQuotation(q);
+        } catch (affErr) {
+          console.warn('Failed to create affiliate sale:', affErr.message);
+        }
       } catch (e) {
         console.error('Webhook processing error:', e);
         return res.status(500).send('Processing failed');
@@ -215,3 +230,50 @@ exports.paystackWebhook = async (req, res) => {
   }
   res.sendStatus(200);
 };
+
+/**
+ * Helper function to create affiliate sale from completed quotation
+ * Checks if user has referral_code stored and creates sale automatically
+ */
+async function createAffiliateSaleFromQuotation(quotation) {
+  const Affiliate = require('../models/affiliate');
+  const CommissionService = require('../services/commissionService');
+  
+  // Check if customer has a referral code
+  const user = await db('users').where({ id: quotation.user_id }).first();
+  if (!user || !user.referral_code) {
+    return; // No referral code, skip
+  }
+  
+  // Find affiliate by referral code
+  const affiliate = await Affiliate.findByReferralCode(user.referral_code);
+  if (!affiliate || !affiliate.is_active) {
+    return; // Affiliate not found or inactive
+  }
+  
+  // Create the sale
+  const sale = await CommissionService.processSale({
+    affiliate_id: affiliate.id,
+    customer_id: quotation.user_id,
+    sale_reference: quotation.reference,
+    sale_amount: quotation.total_amount,
+    payment_method: 'quotation',
+    payment_details: `Auto-created from quotation ${quotation.reference}`
+  });
+  
+  console.log(`Affiliate sale created: ${sale.id} for affiliate ${affiliate.id} from quotation ${quotation.reference}`);
+  
+  // Send notification to affiliate
+  try {
+    const Notifications = require('../models/notification');
+    await Notifications.create({
+      user_id: affiliate.user_id,
+      title: 'New Sale Recorded',
+      body: `A new sale of $${quotation.total_amount.toFixed(2)} has been recorded from your referral. Awaiting admin verification.`,
+      audience: 'USER',
+      url: '/affiliate-dashboard'
+    });
+  } catch (notifErr) {
+    console.warn('Failed to send affiliate notification:', notifErr);
+  }
+}

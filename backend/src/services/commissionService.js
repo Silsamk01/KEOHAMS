@@ -3,6 +3,9 @@ const AffiliateSale = require('../models/affiliateSale');
 const CommissionRecord = require('../models/commissionRecord');
 const db = require('../config/db');
 
+// Maximum commission levels: 0 (direct), 1 (first upline), 2 (second upline)
+const MAX_COMMISSION_LEVELS = 3;
+
 /**
  * Commission Service
  * Handles all commission calculations and distributions
@@ -187,8 +190,8 @@ class CommissionService {
     let totalCommissionAmount = 0;
     const maxTotalRate = settings[0]?.max_total_rate || 25.00;
     
-    // Calculate preview for each level
-    for (let level = 0; level < hierarchy.length && level < settings.length; level++) {
+    // Calculate preview for each level (max 3 levels: 0, 1, 2)
+    for (let level = 0; level < hierarchy.length && level < settings.length && level < MAX_COMMISSION_LEVELS; level++) {
       const affiliate = hierarchy[level];
       const setting = settings[level];
       
@@ -271,11 +274,11 @@ class CommissionService {
         name: affiliate.name,
         email: affiliate.email,
         referral_code: affiliate.referral_code,
-        total_earnings: affiliate.total_earnings,
-        available_balance: affiliate.available_balance,
-        pending_balance: affiliate.pending_balance,
-        direct_referrals: affiliate.direct_referrals,
-        total_downline: affiliate.total_downline
+        total_earnings: Number(affiliate.total_earnings || 0),
+        available_balance: Number(affiliate.available_balance || 0),
+        pending_balance: Number(affiliate.pending_balance || 0),
+        direct_referrals: Number(affiliate.direct_referrals || 0),
+        total_downline: Number(affiliate.total_downline || 0)
       },
       sales: salesStats,
       commissions: commissionStats,

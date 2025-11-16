@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Affiliate Login - KEOHAMS</title>
+    <link rel="icon" type="image/jpeg" href="/keohamlogo.jpg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="/src/css/styles.css" rel="stylesheet">
@@ -34,15 +35,21 @@
         }
         
         .logo-icon {
-            width: 80px;
-            height: 80px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 50%;
+            width: 100px;
+            height: 100px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0 auto 1rem;
-            font-size: 2rem;
+            overflow: hidden;
+            background: white;
+        }
+        
+        .logo-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
         }
         
         .form-control:focus {
@@ -70,7 +77,7 @@
                     <div class="login-card">
                         <div class="login-header">
                             <div class="logo-icon">
-                                <i class="fas fa-network-wired"></i>
+                                <img src="/keohamlogo.jpg" alt="KEOHAMS Logo">
                             </div>
                             <h3 class="mb-1">Affiliate Login</h3>
                             <p class="mb-0 small">Access your affiliate dashboard</p>
@@ -150,48 +157,34 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Signing in...';
             
             try {
-                const response = await fetch('/api/auth/login', {
+                // Get captcha (if implemented)
+                const captchaToken = null; // Add captcha implementation if needed
+                const captchaAnswer = null;
+                
+                const response = await fetch('/api/affiliate/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(formData)
+                    body: JSON.stringify({
+                        ...formData,
+                        captchaToken: captchaToken,
+                        captchaAnswer: captchaAnswer
+                    })
                 });
                 
                 const data = await response.json();
                 
                 if (!response.ok) {
+                    if (data.requires_verification) {
+                        showAlert('Check your email for a link. If it doesn\'t appear within a few minutes, check your spam folder and if in Spam move to inbox.', 'warning');
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Sign In';
+                        return;
+                    }
                     throw new Error(data.message || 'Login failed');
-                }
-                
-                // Check if 2FA is required
-                if (data.requires2FA) {
-                    // Store temporary session and show 2FA input
-                    sessionStorage.setItem('tempSession', data.tempSession);
-                    show2FAForm();
-                    return;
                 }
                 
                 // Store token
                 localStorage.setItem('token', data.token);
-                
-                // Check if user is an affiliate
-                const checkResponse = await fetch(`/api/affiliate/dashboard/${data.user.id}`, {
-                    headers: { 'Authorization': `Bearer ${data.token}` }
-                });
-                
-                if (checkResponse.status === 404) {
-                    // User is not an affiliate
-                    showAlert('You are not registered as an affiliate. Please join the affiliate program first.', 'warning');
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Sign In';
-                    
-                    // Offer to register
-                    setTimeout(() => {
-                        if (confirm('Would you like to join the affiliate program now?')) {
-                            window.location.href = '/affiliate-register';
-                        }
-                    }, 2000);
-                    return;
-                }
                 
                 // Check for redirect URL
                 const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
@@ -339,7 +332,7 @@
             const token = localStorage.getItem('token');
             if (token) {
                 // Verify token and redirect if valid
-                fetch('/api/auth/me', {
+                fetch('/api/affiliate/auth/me', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 })
                 .then(response => {

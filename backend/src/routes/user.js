@@ -15,4 +15,9 @@ router.post('/profile/2fa/recovery/regenerate', asyncHandler(ctrl.regenerateReco
 router.get('/profile/2fa/recovery', asyncHandler(ctrl.getRecoveryCodes));
 router.post('/profile/avatar', upload.single('avatar'), asyncHandler(ctrl.uploadAvatar));
 
+// Email 2FA routes
+router.post('/profile/email-2fa/enable', asyncHandler(ctrl.enableEmail2FA));
+router.post('/profile/email-2fa/verify', asyncHandler(ctrl.verifyAndEnableEmail2FA));
+router.post('/profile/email-2fa/disable', asyncHandler(ctrl.disableEmail2FA));
+
 module.exports = router;

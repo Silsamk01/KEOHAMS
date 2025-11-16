@@ -1,33 +1,35 @@
 const express = require('express');
 const router = express.Router();
 const affiliateController = require('../controllers/affiliateController');
-const auth = require('../middlewares/auth');
+const { requireAffiliateAuth, requireAffiliateSelfOrAdmin } = require('../middlewares/affiliateAuth');
 
 // Public routes (no authentication required)
 router.get('/referral/:code', affiliateController.getByReferralCode);
 
-// Protected routes (authentication required)
-router.use(auth.requireAuth);
+// Protected routes (affiliate authentication required)
+router.use(requireAffiliateAuth);
 
-// Affiliate registration
-router.post('/register', affiliateController.register);
-
-// Affiliate dashboard and stats
-router.get('/dashboard/:user_id', auth.requireSelfOrAdmin, affiliateController.getDashboard);
-router.get('/stats/:user_id', auth.requireSelfOrAdmin, affiliateController.getStats);
+// Affiliate dashboard and stats (uses req.affiliate.id from middleware)
+router.get('/dashboard', affiliateController.getDashboard);
+router.get('/stats', affiliateController.getStats);
 
 // Network management
-router.get('/network/:user_id', auth.requireSelfOrAdmin, affiliateController.getNetworkTree);
+router.get('/network', affiliateController.getNetworkTree);
 
-// Sales management
-router.post('/sales/:user_id', auth.requireSelfOrAdmin, affiliateController.recordSale);
-router.get('/sales/:user_id', auth.requireSelfOrAdmin, affiliateController.getSales);
+// Sales management (affiliates can only view sales, not create them manually)
+// router.post('/sales', affiliateController.recordSale); // DISABLED - Sales are auto-created by system
+router.get('/sales', affiliateController.getSales);
 
 // Commission tracking
-router.get('/commissions/:user_id', auth.requireSelfOrAdmin, affiliateController.getCommissions);
-router.get('/commission-preview/:user_id', auth.requireSelfOrAdmin, affiliateController.getCommissionPreview);
+router.get('/commissions', affiliateController.getCommissions);
+router.get('/commission-preview', affiliateController.getCommissionPreview);
 
 // Profile management
-router.put('/profile/:user_id', auth.requireSelfOrAdmin, affiliateController.updateProfile);
+router.put('/profile', affiliateController.updateProfile);
+
+// Withdrawal management
+router.post('/withdrawals', affiliateController.requestWithdrawal);
+router.get('/withdrawals', affiliateController.getWithdrawals);
+router.delete('/withdrawals/:withdrawal_id', affiliateController.cancelWithdrawal);
 
 module.exports = router;

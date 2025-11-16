@@ -5,7 +5,7 @@ const { verify } = require('./utils/jwt');
 const logger = require('./utils/logger');
 require('dotenv').config();
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 3000;
 
 const server = http.createServer(app);
 const io = new Server(server, {

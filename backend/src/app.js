@@ -10,6 +10,7 @@ require('dotenv').config();
 
 const { notFound, errorHandler: legacyErrorHandler } = require('./middlewares/error');
 const { errorHandler, attachErrorResponders } = require('./utils/errorResponse');
+const security = require('./middlewares/security');
 const authRoutes = require('./routes/auth');
 const categoryRoutes = require('./routes/categories');
 const productRoutes = require('./routes/products');
@@ -30,6 +31,7 @@ const verificationRoutes = require('./routes/verification');
 const adminVerificationRoutes = require('./routes/adminVerification');
 const enhancedKYCRoutes = require('./routes/enhancedKYC');
 const affiliateRoutes = require('./routes/affiliate');
+const affiliateAuthRoutes = require('./routes/affiliateAuth');
 const { cache } = require('./middlewares/redisCache'); // Use Redis-based cache
 const { tryAuth } = require('./middlewares/auth');
 
@@ -44,7 +46,7 @@ app.use((req, _res, next) => {
 });
 
 // Security & common middleware
-app.use(helmet());
+app.use(security.helmetConfig);
 // Content Security Policy: allow only the exact external domains we use
 app.use(
 	helmet.contentSecurityPolicy({
@@ -101,7 +103,8 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-// Note: xss-clean is incompatible with Express 5 (it reassigns req.query). We'll add a safe sanitizer later.
+app.use(security.hppProtection); // HTTP Parameter Pollution protection
+app.use(security.xssProtection); // XSS protection
 app.use(compression({ threshold: 1024 })); // compress responses >1KB
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 // Attach user if token present but do not require
@@ -109,13 +112,18 @@ app.use(tryAuth);
 // Attach standardized error response helpers
 app.use(attachErrorResponders);
 
-// Rate limits (basic & targeted)
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 100 });
+// Rate limits (security-enhanced)
 const notifLimiter = rateLimit({ windowMs: 60 * 1000, limit: 300, standardHeaders: true, legacyHeaders: false });
 const chatLimiter = rateLimit({ windowMs: 60 * 1000, limit: 200, standardHeaders: true, legacyHeaders: false });
-app.use('/api/auth', authLimiter);
+const kycLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 50, standardHeaders: true, legacyHeaders: false }); // 50 requests per 15 min for KYC
+const authGeneralLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 100, standardHeaders: true, legacyHeaders: false }); // 100 requests per 15 min
+app.use('/api/auth', authGeneralLimiter); // General auth endpoints
+app.use('/api/auth/login', security.authLimiter); // Strict limit on login attempts only
+app.use('/api/auth/register', security.authLimiter); // Strict limit on registration
 app.use('/api/notifications', notifLimiter);
 app.use('/api/chats', chatLimiter);
+app.use('/api/payment', security.paymentLimiter); // 10 requests per hour
+app.use('/api/kyc', kycLimiter); // KYC operations - 50 per 15 min
 
 // Routes
 app.use('/api/health', healthRoutes);
@@ -138,7 +146,22 @@ app.use('/api/admin/notification-read-events', adminNotifReadRoutes);
 app.use('/api/verification', verificationRoutes);
 app.use('/api/admin/verification', adminVerificationRoutes);
 app.use('/api/kyc/enhanced', enhancedKYCRoutes);
+// Register affiliate auth routes BEFORE affiliate routes to avoid route conflicts
+app.use('/api/affiliate/auth', affiliateAuthRoutes);
 app.use('/api/affiliate', affiliateRoutes);
+app.use('/api/newsletter', require('./routes/newsletter'));
+app.use('/api/settings', require('./routes/platformSettings'));
+app.use('/api/activity', require('./routes/activity'));
+app.use('/api/payment', require('./routes/payment'));
+app.use('/api/orders', require('./routes/orderManagement'));
+app.use('/api/inventory', require('./routes/inventory'));
+app.use('/api/search', require('./routes/search'));
+app.use('/api/support', require('./routes/support'));
+app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/currency-management', require('./routes/currencyManagement'));
+app.use('/api/security', require('./routes/security'));
+app.use('/api/wishlist', require('./routes/wishlist'));
+app.use('/api/reviews', require('./routes/reviews'));
 
 // Static for uploaded media (support both backend/uploads and backend/src/uploads just in case)
 const uploadsPrimary = path.join(__dirname, '..', 'uploads');
@@ -271,6 +294,9 @@ app.get('/blog', (req, res) => {
 app.get('/blog-public', (req, res) => {
 	res.sendFile(path.join(frontendPages, 'blog-public.html'));
 });
+app.get('/blog-public/:slug', (req, res) => {
+	res.sendFile(path.join(frontendPages, 'blog-public-post.html'));
+});
 app.get('/blog/:slug', (req, res) => {
 	res.sendFile(path.join(frontendPages, 'blog-post.html'));
 });
@@ -314,6 +340,20 @@ app.get('/affiliate-login', (req, res) => {
 
 app.get('/affiliate-forgot-password', (req, res) => {
 	res.sendFile(path.join(frontendPages, 'affiliate-forgot-password.html'));
+});
+
+// Affiliate email verification route
+app.get('/affiliate-verify', (req, res) => {
+	res.sendFile(path.join(frontendPages, 'affiliate-verify.html'));
+});
+
+// Terms & Conditions and Privacy Policy pages
+app.get('/terms-and-conditions', (req, res) => {
+	res.sendFile(path.join(frontendPages, 'terms-and-conditions.html'));
+});
+
+app.get('/privacy-policy', (req, res) => {
+	res.sendFile(path.join(frontendPages, 'privacy-policy.html'));
 });
 
 // (no user dashboard route)

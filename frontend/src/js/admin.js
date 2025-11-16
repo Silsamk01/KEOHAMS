@@ -411,7 +411,7 @@ function ensureAdminSocket(){
     s.onload = ()=> ensureAdminSocket();
     return null;
   }
-  adminSocket = window.io('http://localhost:4000', { auth: { token: t } });
+  adminSocket = window.io(window.location.origin, { auth: { token: t } });
   adminSocket.on('connect_error', (e)=>console.warn('socket admin error', e.message));
   adminSocket.on('message:new', (payload)=>{ if (payload?.thread_id === currentThreadId) appendAdminMessage(payload.message); });
   adminSocket.on('admin:thread:new', ()=> refreshAdminThreads());

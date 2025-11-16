@@ -2,7 +2,7 @@
  * Admin KYC Review Dashboard JavaScript
  */
 
-const API_BASE = 'http://localhost:4000/api';
+const API_BASE = window.location.origin + '/api';
 
 function token() {
   return localStorage.getItem('token');

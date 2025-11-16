@@ -74,7 +74,6 @@ async function selectQuotation(id){
   if(detailEl) detailEl.innerHTML = '<div class="p-3 small text-muted">Loading…</div>';
   try {
     const q = await qFetchJSON(`${Q_API}/mine/${id}`);
-    console.log('Quotation detail loaded:', q); // Debug log
     renderQuotationDetail(q);
     // Highlight selection
     document.querySelectorAll('#quoList .list-group-item').forEach(li=> li.classList.remove('active'));

@@ -115,7 +115,11 @@ window.addEventListener('pageshow', (event)=>{
   const token = getToken();
   const protectedPaths = ['/dashboard','/shop','/blog','/chat','/settings','/notifications','/cart','/affiliate-dashboard'];
   const path = location.pathname.replace(/\/$/,'');
-  if(!token && protectedPaths.includes(path)){
+  
+  // Check if accessing a blog post URL (pattern: /blog/slug)
+  const isBlogPost = /^\/blog\/.+/.test(path);
+  
+  if(!token && (protectedPaths.includes(path) || isBlogPost)){
     // If page restored from BFCache or standard back navigation without token, force redirect
     if(event.persisted || document.visibilityState === 'visible'){
       location.replace('/');

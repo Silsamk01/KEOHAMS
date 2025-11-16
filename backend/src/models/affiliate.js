@@ -65,11 +65,19 @@ async function create(affiliateData) {
  * Find affiliate by ID
  */
 async function findById(id) {
-  return db(TABLE)
-    .select('affiliates.*', 'users.name', 'users.email')
+  const affiliate = await db(TABLE)
+    .select('affiliates.*', 'users.name as user_name', 'users.email as user_email')
     .leftJoin('users', 'affiliates.user_id', 'users.id')
     .where('affiliates.id', id)
     .first();
+  
+  // Use affiliate's own name/email if standalone, otherwise use user's
+  if (affiliate) {
+    affiliate.name = affiliate.name || affiliate.user_name;
+    affiliate.email = affiliate.email || affiliate.user_email;
+  }
+  
+  return affiliate;
 }
 
 /**
@@ -77,9 +85,19 @@ async function findById(id) {
  */
 async function findByUserId(user_id) {
   return db(TABLE)
-    .select('affiliates.*', 'users.name', 'users.email')
+    .select('affiliates.*', 'users.name as user_name', 'users.email as user_email')
     .leftJoin('users', 'affiliates.user_id', 'users.id')
     .where('affiliates.user_id', user_id)
+    .first();
+}
+
+/**
+ * Find affiliate by email
+ */
+async function findByEmail(email) {
+  return db(TABLE)
+    .where({ email: email.toLowerCase().trim() })
+    .whereNull('deleted_at')
     .first();
 }
 
@@ -87,25 +105,34 @@ async function findByUserId(user_id) {
  * Find affiliate by referral code
  */
 async function findByReferralCode(referral_code) {
-  return db(TABLE)
-    .select('affiliates.*', 'users.name', 'users.email')
+  const affiliate = await db(TABLE)
+    .select('affiliates.*', 'users.name as user_name', 'users.email as user_email')
     .leftJoin('users', 'affiliates.user_id', 'users.id')
     .where('affiliates.referral_code', referral_code)
     .first();
+  
+  // Use affiliate's own name/email if standalone, otherwise use user's
+  if (affiliate) {
+    affiliate.name = affiliate.name || affiliate.user_name;
+    affiliate.email = affiliate.email || affiliate.user_email;
+  }
+  
+  return affiliate;
 }
 
 /**
  * Get affiliate's upline chain (all parents)
+ * Limited to 2 levels max for commission calculation (level 1 and level 2)
  */
-async function getUplineChain(affiliate_id) {
+async function getUplineChain(affiliate_id, maxLevels = 2) {
   const upline = [];
   let current_id = affiliate_id;
+  let levelCount = 0;
   
-  while (current_id) {
+  while (current_id && levelCount < maxLevels) {
     const affiliate = await db(TABLE)
-      .select('id', 'user_id', 'parent_affiliate_id', 'referral_code')
+      .select('affiliates.id', 'affiliates.user_id', 'affiliates.parent_affiliate_id', 'affiliates.referral_code', 'users.name', 'users.email')
       .leftJoin('users', 'affiliates.user_id', 'users.id')
-      .addSelect('users.name', 'users.email')
       .where('affiliates.id', current_id)
       .first();
     
@@ -113,6 +140,7 @@ async function getUplineChain(affiliate_id) {
     
     if (affiliate.id !== affiliate_id) { // Don't include self
       upline.push(affiliate);
+      levelCount++;
     }
     
     current_id = affiliate.parent_affiliate_id;
@@ -285,6 +313,7 @@ module.exports = {
   create,
   findById,
   findByUserId,
+  findByEmail,
   findByReferralCode,
   getUplineChain,
   getDownline,

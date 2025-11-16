@@ -4,8 +4,46 @@ function authHeaders(){ const t=getToken(); return t?{ Authorization:`Bearer ${t
 
 async function fetchJSON(url, opts={}){
   const res = await fetch(url, { ...opts, headers: { 'Accept':'application/json', ...(opts.headers||{}), ...authHeaders() } });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    const errorText = await res.text();
+    let errorData;
+    try {
+      errorData = JSON.parse(errorText);
+    } catch {
+      throw new Error(errorText);
+    }
+    
+    // Handle KYC-related errors
+    if (errorData.requiresKYC) {
+      handleKYCError(errorData);
+      throw new Error('KYC_REQUIRED');
+    }
+    
+    throw new Error(errorData.message || errorText);
+  }
   return res.json();
+}
+
+function handleKYCError(errorData) {
+  const kycStatus = errorData.kycStatus;
+  let message = errorData.message || 'KYC verification required to access blog content.';
+  let shouldRedirect = false;
+  
+  if (kycStatus === 'NOT_SUBMITTED') {
+    message = '🔒 KYC Verification Required\n\nYou need to complete KYC verification to access blog content.\n\nClick OK to start the verification process.';
+    shouldRedirect = true;
+  } else if (kycStatus === 'PENDING' || kycStatus === 'UNDER_REVIEW') {
+    message = '⏳ KYC Pending Review\n\nYour KYC submission is under review by our admin team.\n\nYou will be notified once approved.';
+  } else if (kycStatus === 'REJECTED') {
+    message = '❌ KYC Rejected\n\nYour KYC submission was rejected.\n\nClick OK to resubmit with correct documents.';
+    shouldRedirect = true;
+  }
+  
+  alert(message);
+  
+  if (shouldRedirect) {
+    window.location.href = errorData.redirectTo || '/kyc-enhanced';
+  }
 }
 
 // State

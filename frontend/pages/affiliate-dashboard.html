@@ -3,80 +3,231 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>Affiliate Dashboard - KEOHAMS</title>
+    <link rel="icon" type="image/jpeg" href="/keohamlogo.jpg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="/src/css/styles.css" rel="stylesheet">
     <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+        }
+        
+        body {
+            background: #f5f7fa;
+        }
+        
         .affiliate-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--primary-gradient);
             color: white;
             border-radius: 15px;
             padding: 2rem;
             margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
         }
         
         .stats-card {
             background: white;
-            border-radius: 10px;
+            border-radius: 12px;
             padding: 1.5rem;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
             margin-bottom: 1.5rem;
-            transition: transform 0.2s;
+            transition: all 0.3s ease;
+            border: 1px solid #f0f0f0;
         }
         
         .stats-card:hover {
-            transform: translateY(-2px);
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
         }
         
         .stats-number {
             font-size: 2rem;
             font-weight: bold;
-            color: #667eea;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        
+        .card-header {
+            border-bottom: none;
+            padding: 1rem 1.5rem;
+            font-weight: 600;
+        }
+        
+        .bg-gradient {
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
         }
         
         .tree-item {
-            background: #f8f9fa;
-            border-left: 4px solid #667eea;
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            border-left: 4px solid var(--primary-color);
             margin: 0.5rem 0;
             padding: 1rem;
-            border-radius: 0 8px 8px 0;
+            border-radius: 0 12px 12px 0;
+            transition: all 0.3s ease;
+        }
+        
+        .tree-item:hover {
+            border-left-width: 6px;
+            padding-left: 1.2rem;
         }
         
         .level-indicator {
-            background: #667eea;
+            background: var(--primary-gradient);
             color: white;
-            padding: 0.2rem 0.5rem;
-            border-radius: 15px;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
             font-size: 0.8rem;
             font-weight: bold;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
         }
         
-        .commission-preview {
-            background: #e8f5e8;
-            border: 1px solid #d4edda;
-            border-radius: 8px;
-            padding: 1rem;
-            margin: 1rem 0;
+        .commission-results {
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         
         .referral-code {
-            background: #667eea;
+            background: var(--primary-gradient);
             color: white;
             padding: 0.5rem 1rem;
             border-radius: 25px;
-            font-family: monospace;
+            font-family: 'Courier New', monospace;
             font-weight: bold;
-            letter-spacing: 1px;
+            letter-spacing: 2px;
+            font-size: 1.1rem;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
         }
         
         .referral-link {
             background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 5px;
-            padding: 0.5rem;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 0.75rem;
             font-family: monospace;
             font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+        
+        .referral-link:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        
+        .btn-primary {
+            background: var(--primary-gradient);
+            border: none;
+            padding: 0.6rem 1.5rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-success {
+            background: var(--success-gradient);
+            border: none;
+            padding: 0.6rem 1.5rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(17, 153, 142, 0.3);
+        }
+        
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(17, 153, 142, 0.4);
+        }
+        
+        .nav-tabs .nav-link {
+            border: none;
+            color: #6c757d;
+            padding: 1rem 1.5rem;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-tabs .nav-link:hover {
+            color: var(--primary-color);
+        }
+        
+        .nav-tabs .nav-link.active {
+            color: var(--primary-color);
+            background: transparent;
+            border-bottom: 3px solid var(--primary-color);
+        }
+        
+        .badge {
+            padding: 0.5rem 0.8rem;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        
+        .alert {
+            border-radius: 10px;
+            border: none;
+        }
+        
+        .form-control, .form-select {
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+            padding: 0.75rem 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        
+        .payment-fields {
+            animation: slideDown 0.3s ease;
+        }
+        
+        @keyframes slideDown {
+            from { opacity: 0; max-height: 0; }
+            to { opacity: 1; max-height: 500px; }
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .affiliate-card {
+                padding: 1.5rem;
+            }
+            
+            .stats-card {
+                margin-bottom: 1rem;
+            }
+            
+            .stats-number {
+                font-size: 1.5rem;
+            }
+            
+            .referral-code {
+                font-size: 0.9rem;
+                letter-spacing: 1px;
+            }
         }
     </style>
 </head>
@@ -271,13 +422,13 @@
                 <div class="tab-pane fade" id="sales" role="tabpanel">
                     <div class="mt-4">
                         <div class="row mb-3">
-                            <div class="col-md-6">
-                                <h4><i class="fas fa-shopping-cart me-2"></i>Record New Sale</h4>
-                            </div>
-                            <div class="col-md-6 text-end">
-                                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newSaleModal">
-                                    <i class="fas fa-plus me-1"></i>Record Sale
-                                </button>
+                            <div class="col-md-12">
+                                <h4><i class="fas fa-shopping-cart me-2"></i>My Sales</h4>
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Sales are automatically recorded when customers complete orders using your referral code.
+                                    Once verified by admin, you'll earn commissions!
+                                </div>
                             </div>
                         </div>
                         
@@ -374,21 +525,159 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="card">
-                                    <div class="card-header">
-                                        <h5><i class="fas fa-calculator me-2"></i>Commission Calculator</h5>
+                                    <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                        <h5 class="mb-0"><i class="fas fa-calculator me-2"></i>Commission Calculator</h5>
                                     </div>
                                     <div class="card-body">
                                         <div class="mb-3">
-                                            <label for="saleAmount" class="form-label">Sale Amount ($)</label>
+                                            <label for="calcSaleAmount" class="form-label fw-bold">Enter Sale Amount ($)</label>
                                             <input type="number" 
-                                                   class="form-control" 
-                                                   id="saleAmount" 
-                                                   placeholder="Enter sale amount"
+                                                   class="form-control form-control-lg" 
+                                                   id="calcSaleAmount" 
+                                                   placeholder="0.00"
                                                    min="0"
                                                    step="0.01"
-                                                   onchange="calculateCommission()">
+                                                   oninput="calculateCommissionPreview()">
                                         </div>
-                                        <div id="commissionPreview"></div>
+                                        <div id="commissionBreakdown" class="mt-4"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Payout Request Section -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card border-success">
+                                    <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                                        <h5 class="mb-0"><i class="fas fa-money-bill-wave me-2"></i>Request Payout</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="alert alert-info mb-4">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            <strong>Minimum Payout:</strong> ₦50,000.00 | 
+                                            <strong>Your Available Balance:</strong> ₦<span id="payoutAvailableBalance">0.00</span>
+                                        </div>
+                                        
+                                        <form id="payoutRequestForm">
+                                            <div class="row">
+                                                <div class="col-md-6 mb-3">
+                                                    <label for="payoutAmount" class="form-label fw-bold">Withdrawal Amount (₦) *</label>
+                                                    <input type="number" 
+                                                           class="form-control" 
+                                                           id="payoutAmount" 
+                                                           placeholder="Minimum ₦50,000"
+                                                           min="50000"
+                                                           step="1000"
+                                                           required>
+                                                    <div class="form-text">Enter amount between ₦50,000 and your available balance</div>
+                                                </div>
+                                                
+                                                <div class="col-md-6 mb-3">
+                                                    <label for="payoutMethod" class="form-label fw-bold">Payment Method *</label>
+                                                    <select class="form-select" id="payoutMethod" required onchange="updatePaymentFields()">
+                                                        <option value="">Select payment method</option>
+                                                        <option value="bank_transfer">Bank Transfer (Nigeria)</option>
+                                                        <option value="mobile_money">Mobile Money</option>
+                                                        <option value="paypal">PayPal</option>
+                                                        <option value="crypto">Cryptocurrency</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Bank Transfer Fields -->
+                                            <div id="bankTransferFields" class="payment-fields d-none">
+                                                <div class="row">
+                                                    <div class="col-md-6 mb-3">
+                                                        <label for="bankName" class="form-label">Bank Name *</label>
+                                                        <select class="form-select" id="bankName">
+                                                            <option value="">Select Bank</option>
+                                                            <option value="Access Bank">Access Bank</option>
+                                                            <option value="GTBank">Guaranty Trust Bank (GTBank)</option>
+                                                            <option value="First Bank">First Bank of Nigeria</option>
+                                                            <option value="UBA">United Bank for Africa (UBA)</option>
+                                                            <option value="Zenith Bank">Zenith Bank</option>
+                                                            <option value="Fidelity Bank">Fidelity Bank</option>
+                                                            <option value="Union Bank">Union Bank</option>
+                                                            <option value="Sterling Bank">Sterling Bank</option>
+                                                            <option value="Stanbic IBTC">Stanbic IBTC Bank</option>
+                                                            <option value="Wema Bank">Wema Bank</option>
+                                                            <option value="Polaris Bank">Polaris Bank</option>
+                                                            <option value="Ecobank">Ecobank Nigeria</option>
+                                                            <option value="FCMB">First City Monument Bank (FCMB)</option>
+                                                            <option value="Keystone Bank">Keystone Bank</option>
+                                                            <option value="Kuda Bank">Kuda Bank</option>
+                                                            <option value="Opay">Opay</option>
+                                                            <option value="Palmpay">Palmpay</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-6 mb-3">
+                                                        <label for="accountNumber" class="form-label">Account Number *</label>
+                                                        <input type="text" class="form-control" id="accountNumber" placeholder="0123456789" maxlength="10">
+                                                    </div>
+                                                    <div class="col-md-12 mb-3">
+                                                        <label for="accountName" class="form-label">Account Name *</label>
+                                                        <input type="text" class="form-control" id="accountName" placeholder="Full name as registered with bank">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Mobile Money Fields -->
+                                            <div id="mobileMoneyFields" class="payment-fields d-none">
+                                                <div class="row">
+                                                    <div class="col-md-6 mb-3">
+                                                        <label for="mobileProvider" class="form-label">Provider *</label>
+                                                        <select class="form-select" id="mobileProvider">
+                                                            <option value="">Select Provider</option>
+                                                            <option value="MTN Mobile Money">MTN Mobile Money</option>
+                                                            <option value="Airtel Money">Airtel Money</option>
+                                                            <option value="9mobile">9mobile</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-6 mb-3">
+                                                        <label for="mobileNumber" class="form-label">Phone Number *</label>
+                                                        <input type="tel" class="form-control" id="mobileNumber" placeholder="08012345678">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- PayPal Fields -->
+                                            <div id="paypalFields" class="payment-fields d-none">
+                                                <div class="mb-3">
+                                                    <label for="paypalEmail" class="form-label">PayPal Email *</label>
+                                                    <input type="email" class="form-control" id="paypalEmail" placeholder="your@paypal.com">
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Crypto Fields -->
+                                            <div id="cryptoFields" class="payment-fields d-none">
+                                                <div class="row">
+                                                    <div class="col-md-6 mb-3">
+                                                        <label for="cryptoCurrency" class="form-label">Cryptocurrency *</label>
+                                                        <select class="form-select" id="cryptoCurrency">
+                                                            <option value="">Select Currency</option>
+                                                            <option value="BTC">Bitcoin (BTC)</option>
+                                                            <option value="ETH">Ethereum (ETH)</option>
+                                                            <option value="USDT">Tether (USDT)</option>
+                                                            <option value="BUSD">Binance USD (BUSD)</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-12 mb-3">
+                                                        <label for="cryptoAddress" class="form-label">Wallet Address *</label>
+                                                        <input type="text" class="form-control" id="cryptoAddress" placeholder="Your wallet address">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mt-4">
+                                                <button type="submit" class="btn btn-success btn-lg px-5" id="submitPayoutBtn">
+                                                    <i class="fas fa-paper-plane me-2"></i>Submit Payout Request
+                                                </button>
+                                                <button type="button" class="btn btn-outline-secondary btn-lg px-4 ms-2" onclick="resetPayoutForm()">
+                                                    <i class="fas fa-redo me-2"></i>Reset
+                                                </button>
+                                            </div>
+                                        </form>
                                     </div>
                                 </div>
                             </div>
@@ -451,7 +740,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script type="module">
-        import { requireAuth, getToken, getCurrentUser, logout, isAuthenticated } from '/src/js/auth.js';
+        import { requireAuth, getToken, getCurrentAffiliate, logout, isAuthenticated, API_BASE } from '/src/js/affiliate-dashboard.js';
         
         // Authentication Guard - Execute immediately
         if (!isAuthenticated()) {
@@ -460,7 +749,7 @@
             throw new Error('Authentication required');
         }
         
-        let currentUser = null;
+        let currentAffiliate = null;
         let affiliateData = null;
 
         // Initialize dashboard
@@ -471,16 +760,16 @@
                     return;
                 }
                 
-                currentUser = getCurrentUser();
-                if (!currentUser) {
+                currentAffiliate = getCurrentAffiliate();
+                if (!currentAffiliate) {
                     sessionStorage.setItem('redirectAfterLogin', window.location.href);
                     window.location.href = '/affiliate-login';
                     return;
                 }
                 
-                // Verify token with server
+                // Verify token with affiliate endpoint
                 const token = getToken();
-                const verifyResponse = await fetch('/api/auth/me', {
+                const verifyResponse = await fetch(`${API_BASE}/affiliate/auth/me`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
@@ -501,13 +790,24 @@
             }
         });
         
-        // Make logout function global
+        // Make functions global
         window.logout = logout;
+        window.registerAffiliate = registerAffiliate;
+        window.submitNewSale = submitNewSale;
+        window.calculateCommission = calculateCommission;
+        window.calculateCommissionPreview = calculateCommissionPreview;
+        window.updatePaymentFields = updatePaymentFields;
+        window.resetPayoutForm = resetPayoutForm;
+        window.copyReferralLink = copyReferralLink;
+        window.copyReferralCode = copyReferralCode;
+        window.loadSales = loadSales;
+        window.loadCommissions = loadCommissions;
+        window.loadNetwork = loadNetwork;
         
         // Load affiliate dashboard data
         async function loadAffiliateDashboard() {
             try {
-                const response = await fetch(`/api/affiliate/dashboard/${currentUser.sub}`, {
+                const response = await fetch(`${API_BASE}/affiliate/dashboard`, {
                     headers: { 'Authorization': `Bearer ${getToken()}` }
                 });
                 
@@ -544,11 +844,11 @@
             // Populate affiliate info
             document.getElementById('affiliateName').textContent = affiliateData.affiliate.name;
             document.getElementById('referralCode').textContent = affiliateData.affiliate.referral_code;
-            document.getElementById('totalEarnings').textContent = affiliateData.affiliate.total_earnings.toFixed(2);
-            document.getElementById('availableBalance').textContent = affiliateData.affiliate.available_balance.toFixed(2);
-            document.getElementById('pendingBalance').textContent = affiliateData.affiliate.pending_balance.toFixed(2);
-            document.getElementById('totalSales').textContent = affiliateData.sales.total_count;
-            document.getElementById('directReferrals').textContent = affiliateData.affiliate.direct_referrals;
+            document.getElementById('totalEarnings').textContent = parseFloat(affiliateData.affiliate.total_earnings || 0).toFixed(2);
+            document.getElementById('availableBalance').textContent = parseFloat(affiliateData.affiliate.available_balance || 0).toFixed(2);
+            document.getElementById('pendingBalance').textContent = parseFloat(affiliateData.affiliate.pending_balance || 0).toFixed(2);
+            document.getElementById('totalSales').textContent = affiliateData.sales.total_count || 0;
+            document.getElementById('directReferrals').textContent = affiliateData.affiliate.direct_referrals || 0;
             
             // Set referral tools
             const referralLink = `${window.location.origin}/?ref=${affiliateData.affiliate.referral_code}`;
@@ -560,6 +860,9 @@
             
             // Populate recent commissions
             populateRecentCommissions(affiliateData.recent_commissions);
+            
+            // Update payout balance
+            updatePayoutBalance();
         }
         
         // Register as affiliate
@@ -567,14 +870,13 @@
             const parentReferralCode = document.getElementById('parentReferralCode').value.trim();
             
             try {
-                const response = await fetch('/api/affiliate/register', {
+                const response = await fetch(`${API_BASE}/affiliate/register`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${getToken()}`
                     },
                     body: JSON.stringify({
-                        user_id: currentUser.sub,
                         parent_referral_code: parentReferralCode || null
                     })
                 });
@@ -658,7 +960,7 @@
             };
             
             try {
-                const response = await fetch(`/api/affiliate/sales/${currentUser.sub}`, {
+                const response = await fetch(`${API_BASE}/affiliate/sales`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -699,7 +1001,7 @@
             }
             
             try {
-                const response = await fetch(`/api/affiliate/commission-preview/${currentUser.sub}?sale_amount=${amount}`, {
+                const response = await fetch(`${API_BASE}/affiliate/commission-preview?sale_amount=${amount}`, {
                     headers: { 'Authorization': `Bearer ${getToken()}` }
                 });
                 
@@ -731,6 +1033,203 @@
                 
             } catch (error) {
                 console.error('Commission preview error:', error);
+            }
+        }
+        
+        // Enhanced Commission Calculator
+        function calculateCommissionPreview() {
+            const amount = parseFloat(document.getElementById('calcSaleAmount').value);
+            const container = document.getElementById('commissionBreakdown');
+            
+            if (!amount || amount <= 0) {
+                container.innerHTML = '<p class="text-muted text-center">Enter an amount to see commission breakdown</p>';
+                return;
+            }
+            
+            // Commission structure: 10% Level 0, 2.5% Level 1, 2.5% Level 2
+            const rates = [
+                { level: 0, rate: 10.00, label: 'Your Commission (Direct Sale)' },
+                { level: 1, rate: 2.50, label: 'Your Upline Level 1' },
+                { level: 2, rate: 2.50, label: 'Your Upline Level 2' }
+            ];
+            
+            let html = '<div class="commission-results">';
+            html += '<h6 class="mb-3 text-center">Commission Breakdown</h6>';
+            
+            let totalCommission = 0;
+            rates.forEach((item, index) => {
+                const commission = (amount * item.rate) / 100;
+                totalCommission += commission;
+                const bgColor = index === 0 ? '#667eea' : (index === 1 ? '#764ba2' : '#9f7aea');
+                
+                html += `
+                    <div class="mb-3 p-3 rounded" style="background: linear-gradient(135deg, ${bgColor} 0%, ${bgColor}dd 100%); color: white;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="fw-bold">${item.label}</div>
+                                <small class="opacity-75">Level ${item.level} - ${item.rate}%</small>
+                            </div>
+                            <div class="text-end">
+                                <div class="h4 mb-0">₦${commission.toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                            </div>
+                        </div>
+                        <div class="progress mt-2" style="height: 8px; background: rgba(255,255,255,0.2);">
+                            <div class="progress-bar" role="progressbar" style="width: ${(commission/amount*100).toFixed(1)}%; background: rgba(255,255,255,0.8);"></div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += `
+                <div class="alert alert-success mt-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <strong><i class="fas fa-check-circle me-2"></i>Total Commission:</strong>
+                        <span class="h5 mb-0">₦${totalCommission.toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${(totalCommission/amount*100).toFixed(2)}%)</span>
+                    </div>
+                </div>
+            `;
+            
+            html += `
+                <div class="text-center mt-2 text-muted">
+                    <small>From a sale of ₦${amount.toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</small>
+                </div>
+            `;
+            
+            html += '</div>';
+            
+            container.innerHTML = html;
+        }
+        
+        // Update payment fields based on selected method
+        function updatePaymentFields() {
+            const method = document.getElementById('payoutMethod').value;
+            
+            // Hide all payment fields
+            document.querySelectorAll('.payment-fields').forEach(el => el.classList.add('d-none'));
+            
+            // Show relevant fields
+            if (method === 'bank_transfer') {
+                document.getElementById('bankTransferFields').classList.remove('d-none');
+            } else if (method === 'mobile_money') {
+                document.getElementById('mobileMoneyFields').classList.remove('d-none');
+            } else if (method === 'paypal') {
+                document.getElementById('paypalFields').classList.remove('d-none');
+            } else if (method === 'crypto') {
+                document.getElementById('cryptoFields').classList.remove('d-none');
+            }
+        }
+        
+        // Submit payout request
+        document.getElementById('payoutRequestForm')?.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const amount = parseFloat(document.getElementById('payoutAmount').value);
+            const method = document.getElementById('payoutMethod').value;
+            const availableBalance = parseFloat(affiliateData?.affiliate?.available_balance || 0);
+            
+            // Validate minimum amount (50,000 Naira)
+            if (amount < 50000) {
+                alert('Minimum payout amount is ₦50,000');
+                return;
+            }
+            
+            // Validate sufficient balance
+            if (amount > availableBalance) {
+                alert(`Insufficient balance. Available: ₦${availableBalance.toFixed(2)}`);
+                return;
+            }
+            
+            // Collect payment details based on method
+            let payment_details = {};
+            
+            if (method === 'bank_transfer') {
+                payment_details = {
+                    bank_name: document.getElementById('bankName').value,
+                    account_number: document.getElementById('accountNumber').value,
+                    account_name: document.getElementById('accountName').value
+                };
+                if (!payment_details.bank_name || !payment_details.account_number || !payment_details.account_name) {
+                    alert('Please fill all bank transfer details');
+                    return;
+                }
+            } else if (method === 'mobile_money') {
+                payment_details = {
+                    provider: document.getElementById('mobileProvider').value,
+                    phone_number: document.getElementById('mobileNumber').value
+                };
+                if (!payment_details.provider || !payment_details.phone_number) {
+                    alert('Please fill all mobile money details');
+                    return;
+                }
+            } else if (method === 'paypal') {
+                payment_details = {
+                    paypal_email: document.getElementById('paypalEmail').value
+                };
+                if (!payment_details.paypal_email) {
+                    alert('Please enter your PayPal email');
+                    return;
+                }
+            } else if (method === 'crypto') {
+                payment_details = {
+                    currency: document.getElementById('cryptoCurrency').value,
+                    wallet_address: document.getElementById('cryptoAddress').value
+                };
+                if (!payment_details.currency || !payment_details.wallet_address) {
+                    alert('Please fill all cryptocurrency details');
+                    return;
+                }
+            }
+            
+            try {
+                document.getElementById('submitPayoutBtn').disabled = true;
+                document.getElementById('submitPayoutBtn').innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+                
+                const response = await fetch(`${API_BASE}/affiliate/withdrawals`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getToken()}`
+                    },
+                    body: JSON.stringify({
+                        amount,
+                        method,
+                        payment_details
+                    })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Failed to submit payout request');
+                }
+                
+                const result = await response.json();
+                
+                alert('✅ Payout request submitted successfully! You will be notified once processed.');
+                
+                // Reset form and reload dashboard
+                resetPayoutForm();
+                await loadAffiliateDashboard();
+                
+            } catch (error) {
+                console.error('Payout request error:', error);
+                alert('❌ Failed to submit payout request: ' + error.message);
+            } finally {
+                document.getElementById('submitPayoutBtn').disabled = false;
+                document.getElementById('submitPayoutBtn').innerHTML = '<i class="fas fa-paper-plane me-2"></i>Submit Payout Request';
+            }
+        });
+        
+        // Reset payout form
+        function resetPayoutForm() {
+            document.getElementById('payoutRequestForm').reset();
+            document.querySelectorAll('.payment-fields').forEach(el => el.classList.add('d-none'));
+        }
+        
+        // Update payout available balance
+        function updatePayoutBalance() {
+            if (affiliateData && affiliateData.affiliate) {
+                const balance = parseFloat(affiliateData.affiliate.available_balance || 0);
+                document.getElementById('payoutAvailableBalance').textContent = balance.toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             }
         }
         
@@ -787,7 +1286,7 @@
         // Load sales tab
         async function loadSales() {
             try {
-                const response = await fetch(`/api/affiliate/sales/${currentUser.sub}`, {
+                const response = await fetch(`${API_BASE}/affiliate/sales`, {
                     headers: { 'Authorization': `Bearer ${getToken()}` }
                 });
                 
@@ -835,7 +1334,7 @@
         // Load commissions tab
         async function loadCommissions() {
             try {
-                const response = await fetch(`/api/affiliate/commissions/${currentUser.sub}`, {
+                const response = await fetch(`${API_BASE}/affiliate/commissions`, {
                     headers: { 'Authorization': `Bearer ${getToken()}` }
                 });
                 
@@ -883,7 +1382,7 @@
         async function loadNetwork() {
             try {
                 // Load upline
-                const uplineResponse = await fetch(`/api/affiliate/network/${currentUser.sub}?type=upline`, {
+                const uplineResponse = await fetch(`${API_BASE}/affiliate/network?type=upline`, {
                     headers: { 'Authorization': `Bearer ${getToken()}` }
                 });
                 
@@ -909,7 +1408,7 @@
                 }
                 
                 // Load downline
-                const downlineResponse = await fetch(`/api/affiliate/network/${currentUser.sub}?type=downline`, {
+                const downlineResponse = await fetch(`${API_BASE}/affiliate/network?type=downline`, {
                     headers: { 'Authorization': `Bearer ${getToken()}` }
                 });
                 

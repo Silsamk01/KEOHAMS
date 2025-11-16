@@ -3,6 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <title>Admin · KEOHAMS</title>
   <link rel="icon" type="image/jpeg" href="/keohamlogo.jpg">
   <link rel="shortcut icon" type="image/jpeg" href="/keohamlogo.jpg">
@@ -53,12 +56,15 @@
           <button class="nav-link position-relative" id="tab-quotations" data-bs-toggle="pill" data-bs-target="#pane-quotations" type="button" role="tab">Quotations <span class="badge bg-warning text-dark ms-1 d-none" id="adminQuoBadge">0</span></button>
           <button class="nav-link" id="tab-contact" data-bs-toggle="pill" data-bs-target="#pane-contact" type="button" role="tab">Contact Messages</button>
           <button class="nav-link position-relative" id="tab-affiliate" data-bs-toggle="pill" data-bs-target="#pane-affiliate" type="button" role="tab">Affiliate System <span class="badge bg-info ms-1 d-none" id="affiliatePendingBadge">0</span></button>
+          <button class="nav-link position-relative" id="tab-payouts" data-bs-toggle="pill" data-bs-target="#pane-payouts" type="button" role="tab">Payouts <span class="badge bg-warning text-dark ms-1 d-none" id="payoutsPendingBadge">0</span></button>
+          <button class="nav-link" id="tab-newsletter" data-bs-toggle="pill" data-bs-target="#pane-newsletter" type="button" role="tab">Newsletter</button>
+          <button class="nav-link" id="tab-settings" data-bs-toggle="pill" data-bs-target="#pane-settings" type="button" role="tab"><i class="fas fa-cog"></i> Settings</button>
         </nav>
       </aside>
       <div class="admin-content">
         <div class="tab-content" id="adminTabContent">
       <div class="tab-pane fade show active" id="pane-dashboard" role="tabpanel">
-        <div class="row g-3">
+        <div class="row g-3 mb-4">
           <div class="col-md-3">
             <div class="card text-center">
               <div class="card-body">
@@ -83,7 +89,80 @@
               </div>
             </div>
           </div>
-
+        </div>
+        
+        <!-- Activity Statistics -->
+        <div class="row g-3 mb-4">
+          <div class="col-12">
+            <h5><i class="fas fa-chart-line"></i> Activity in Last 24 Hours</h5>
+          </div>
+          <div class="col-md-3">
+            <div class="card text-center border-danger">
+              <div class="card-body">
+                <div class="text-muted small">Admin Activity</div>
+                <div class="h3 text-danger" id="activityStatsAdmin">0</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card text-center border-primary">
+              <div class="card-body">
+                <div class="text-muted small">User Activity</div>
+                <div class="h3 text-primary" id="activityStatsUser">0</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card text-center border-info">
+              <div class="card-body">
+                <div class="text-muted small">Affiliate Activity</div>
+                <div class="h3 text-info" id="activityStatsAffiliate">0</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card text-center border-success">
+              <div class="card-body">
+                <div class="text-muted small">Total Activity</div>
+                <div class="h3 text-success" id="activityStatsTotal">0</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Recent Activity Feed -->
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+              <i class="fas fa-history"></i> <strong>Recent Activity</strong>
+            </div>
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-secondary active" data-filter-type="ALL" onclick="filterActivitiesByType('ALL')">All</button>
+              <button class="btn btn-outline-danger" data-filter-type="ADMIN" onclick="filterActivitiesByType('ADMIN')">Admin</button>
+              <button class="btn btn-outline-primary" data-filter-type="USER" onclick="filterActivitiesByType('USER')">Users</button>
+              <button class="btn btn-outline-info" data-filter-type="AFFILIATE" onclick="filterActivitiesByType('AFFILIATE')">Affiliates</button>
+              <button class="btn btn-outline-secondary" id="refreshActivitiesBtn"><i class="fas fa-sync"></i></button>
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover table-sm mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Action</th>
+                    <th>Type</th>
+                    <th>User</th>
+                    <th>Description</th>
+                    <th>Time</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="activityTableBody">
+                  <tr><td colspan="6" class="text-center text-muted">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -866,6 +945,238 @@
         </div>
       </div>
         </div>
+
+      <!-- Payouts Management Tab -->
+      <div class="tab-pane fade" id="pane-payouts" role="tabpanel">
+        <div class="row g-3 mb-4">
+          <div class="col-md-3">
+            <div class="card text-center">
+              <div class="card-body">
+                <div class="text-muted">Pending Payouts</div>
+                <div class="display-6 text-warning" id="payoutStatsPending">–</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card text-center">
+              <div class="card-body">
+                <div class="text-muted">Total Paid</div>
+                <div class="display-6 text-success" id="payoutStatsPaid">₦0</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card text-center">
+              <div class="card-body">
+                <div class="text-muted">This Month</div>
+                <div class="display-6 text-info" id="payoutStatsMonth">₦0</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card text-center">
+              <div class="card-body">
+                <div class="text-muted">Rejected</div>
+                <div class="display-6 text-danger" id="payoutStatsRejected">0</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Payout Requests</h5>
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-secondary" onclick="filterPayouts('ALL')">All</button>
+              <button class="btn btn-warning" onclick="filterPayouts('PENDING')">Pending</button>
+              <button class="btn btn-success" onclick="filterPayouts('APPROVED')">Approved</button>
+              <button class="btn btn-info" onclick="filterPayouts('PROCESSING')">Processing</button>
+              <button class="btn btn-secondary" onclick="filterPayouts('COMPLETED')">Completed</button>
+              <button class="btn btn-danger" onclick="filterPayouts('REJECTED')">Rejected</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="payoutsTableContainer">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Affiliate</th>
+                    <th>Amount</th>
+                    <th>Method</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="payoutsTableBody">
+                  <tr><td colspan="6" class="text-center">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Newsletter Management Tab -->
+      <div class="tab-pane fade" id="pane-newsletter" role="tabpanel">
+        <div class="row g-3 mb-4">
+          <div class="col-md-3">
+            <div class="card text-center">
+              <div class="card-body">
+                <div class="text-muted">Active Subscribers</div>
+                <div class="display-6 text-success" id="newsletterStatsActive">–</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card text-center">
+              <div class="card-body">
+                <div class="text-muted">Total Campaigns</div>
+                <div class="display-6 text-primary" id="newsletterStatsCampaigns">–</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card text-center">
+              <div class="card-body">
+                <div class="text-muted">Sent Campaigns</div>
+                <div class="display-6 text-info" id="newsletterStatsSent">–</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card text-center">
+              <div class="card-body">
+                <div class="text-muted">Unsubscribed</div>
+                <div class="display-6 text-warning" id="newsletterStatsUnsubscribed">–</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Newsletter Sub-tabs -->
+        <ul class="nav nav-tabs" id="newsletterSubTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="newsletter-subscribers-tab" data-bs-toggle="tab" data-bs-target="#newsletter-subscribers" type="button" role="tab">
+              Subscribers
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="newsletter-campaigns-tab" data-bs-toggle="tab" data-bs-target="#newsletter-campaigns" type="button" role="tab">
+              Campaigns
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="newsletter-create-tab" data-bs-toggle="tab" data-bs-target="#newsletter-create" type="button" role="tab">
+              Create Campaign
+            </button>
+          </li>
+        </ul>
+
+        <div class="tab-content mt-3" id="newsletterSubTabContent">
+          <!-- Subscribers -->
+          <div class="tab-pane fade show active" id="newsletter-subscribers" role="tabpanel">
+            <div class="card">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Subscribers</h5>
+                <div>
+                  <input type="text" id="subscribersSearch" class="form-control form-control-sm d-inline-block" style="width: 200px;" placeholder="Search...">
+                  <button class="btn btn-sm btn-outline-secondary ms-2" onclick="loadSubscribers()">
+                    <i class="fas fa-refresh"></i> Refresh
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div id="subscribersTableContainer">
+                  <table class="table table-sm table-hover">
+                    <thead>
+                      <tr>
+                        <th>Email</th>
+                        <th>Name</th>
+                        <th>Status</th>
+                        <th>Subscribed</th>
+                        <th>Source</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="subscribersTableBody">
+                      <tr><td colspan="6" class="text-center">Loading...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Campaigns -->
+          <div class="tab-pane fade" id="newsletter-campaigns" role="tabpanel">
+            <div class="card">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Campaign History</h5>
+                <button class="btn btn-sm btn-outline-secondary" onclick="loadCampaigns()">
+                  <i class="fas fa-refresh"></i> Refresh
+                </button>
+              </div>
+              <div class="card-body">
+                <div id="campaignsTableContainer">
+                  <table class="table table-hover">
+                    <thead>
+                      <tr>
+                        <th>Subject</th>
+                        <th>Status</th>
+                        <th>Recipients</th>
+                        <th>Sent/Failed</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="campaignsTableBody">
+                      <tr><td colspan="6" class="text-center">Loading...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Create Campaign -->
+          <div class="tab-pane fade" id="newsletter-create" role="tabpanel">
+            <div class="card">
+              <div class="card-header">
+                <h5 class="mb-0">Create New Campaign</h5>
+              </div>
+              <div class="card-body">
+                <form id="createCampaignForm">
+                  <div class="mb-3">
+                    <label for="campaignSubject" class="form-label">Subject</label>
+                    <input type="text" class="form-control" id="campaignSubject" required placeholder="Your Newsletter Title">
+                  </div>
+                  <div class="mb-3">
+                    <label for="campaignContent" class="form-label">Content (HTML)</label>
+                    <textarea class="form-control" id="campaignContent" rows="15" required placeholder="<h2>Hello!</h2><p>Your content here...</p>"></textarea>
+                    <div class="form-text">
+                      Use {unsubscribe_link} as a placeholder for the unsubscribe link. Full HTML supported.
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <button type="button" class="btn btn-outline-secondary" onclick="previewCampaign()">
+                      <i class="fas fa-eye"></i> Preview
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="saveDraftCampaign()">
+                      <i class="fas fa-save"></i> Save as Draft
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="sendCampaignNow()">
+                      <i class="fas fa-paper-plane"></i> Send Now
+                    </button>
+                  </div>
+                </form>
+                <div id="campaignCreateStatus" class="mt-3"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       </div>
     </div>
   </main>
@@ -954,8 +1265,215 @@
     </div>
   </div>
 
+      <!-- Settings Pane -->
+      <div class="tab-pane fade" id="pane-settings" role="tabpanel">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h4 class="mb-1"><i class="fas fa-cog"></i> Platform Settings</h4>
+            <p class="text-muted small mb-0">Configure payment gateways and platform integrations</p>
+          </div>
+          <button class="btn btn-outline-primary btn-sm" id="refreshAllSettings">
+            <i class="fas fa-sync"></i> Refresh All
+          </button>
+        </div>
+        
+        <!-- Payment Gateway Settings -->
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-gradient" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <h5 class="mb-0">
+              <i class="fas fa-credit-card"></i> Payment Gateway - Paystack
+            </h5>
+          </div>
+          <div class="card-body p-4">
+            <div class="alert alert-info border-info">
+              <div class="d-flex">
+                <div class="flex-shrink-0">
+                  <i class="fas fa-info-circle fa-lg"></i>
+                </div>
+                <div class="flex-grow-1 ms-3">
+                  <strong>Getting Started</strong>
+                  <p class="mb-2">Configure your Paystack API keys to enable payment processing across the platform.</p>
+                  <a href="https://dashboard.paystack.com/#/settings/developer" target="_blank" class="btn btn-sm btn-outline-info">
+                    <i class="fas fa-external-link-alt"></i> Get API Keys from Paystack Dashboard
+                  </a>
+                </div>
+              </div>
+            </div>
+            
+            <form id="paystackSettingsForm">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label for="paystackPublicKey" class="form-label fw-bold">
+                    <i class="fas fa-key text-primary"></i> Public Key
+                  </label>
+                  <input type="text" class="form-control form-control-lg font-monospace" id="paystackPublicKey" 
+                    placeholder="pk_test_xxxxxxxxxxxx or pk_live_xxxxxxxxxxxx">
+                  <div class="form-text">
+                    <i class="fas fa-info-circle"></i> Used in frontend for payment initialization
+                  </div>
+                </div>
+                
+                <div class="col-md-6">
+                  <label for="paystackSecretKey" class="form-label fw-bold">
+                    <i class="fas fa-lock text-danger"></i> Secret Key
+                  </label>
+                  <div class="input-group input-group-lg">
+                    <input type="password" class="form-control font-monospace" id="paystackSecretKey" 
+                      placeholder="sk_test_xxxxxxxxxxxx or sk_live_xxxxxxxxxxxx">
+                    <button class="btn btn-outline-secondary" type="button" id="toggleSecretKey">
+                      <i class="fas fa-eye"></i>
+                    </button>
+                  </div>
+                  <div class="form-text">
+                    <i class="fas fa-shield-alt text-success"></i> Encrypted before storage using AES-256-GCM
+                  </div>
+                </div>
+              </div>
+              
+              
+              <div class="mb-4 mt-4">
+                <div class="card bg-light border-0">
+                  <div class="card-body">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="paystackEnabled" style="width: 3em; height: 1.5em;">
+                      <label class="form-check-label ms-2" for="paystackEnabled" style="padding-top: 0.25em;">
+                        <strong class="fs-5">Enable Paystack Gateway</strong>
+                        <span class="text-muted d-block small mt-1">
+                          Turn this on after configuring keys to start accepting payments across the platform
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="d-flex gap-2 flex-wrap">
+                <button type="submit" class="btn btn-success btn-lg">
+                  <i class="fas fa-save"></i> Save Settings
+                </button>
+                <button type="button" class="btn btn-outline-primary btn-lg" id="testPaystackConnection">
+                  <i class="fas fa-vial"></i> Test Connection
+                </button>
+                <button type="button" class="btn btn-outline-secondary" id="loadPaystackSettings">
+                  <i class="fas fa-sync"></i> Reload
+                </button>
+              </div>
+              
+              <div id="settingsSaveStatus" class="mt-3"></div>
+            </form>
+          </div>
+        </div>
+        
+        <!-- Future Settings Placeholder -->
+        <div class="card shadow-sm">
+          <div class="card-header bg-light">
+            <h5 class="mb-0">
+              <i class="fas fa-puzzle-piece"></i> Additional Integrations
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <div class="card h-100 border-0 bg-light">
+                  <div class="card-body text-center">
+                    <i class="fas fa-envelope fa-3x text-muted mb-3"></i>
+                    <h6 class="text-muted">Email Service</h6>
+                    <small class="text-muted">SMTP / SendGrid / SES</small>
+                    <p class="small text-muted mt-2">Coming Soon</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="card h-100 border-0 bg-light">
+                  <div class="card-body text-center">
+                    <i class="fas fa-sms fa-3x text-muted mb-3"></i>
+                    <h6 class="text-muted">SMS Gateway</h6>
+                    <small class="text-muted">Twilio / Nexmo</small>
+                    <p class="small text-muted mt-2">Coming Soon</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="card h-100 border-0 bg-light">
+                  <div class="card-body text-center">
+                    <i class="fas fa-dollar-sign fa-3x text-muted mb-3"></i>
+                    <h6 class="text-muted">Other Gateways</h6>
+                    <small class="text-muted">Stripe / Flutterwave</small>
+                    <p class="small text-muted mt-2">Coming Soon</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
   <script src="/src/js/admin-kyc-review.js"></script>
   <script src="/src/js/admin-affiliate.js"></script>
+  <script src="/src/js/admin-payouts.js"></script>
+  <script src="/src/js/admin-activity.js"></script>
+  <script src="/src/js/admin-newsletter.js"></script>
+  <script src="/src/js/admin-settings.js"></script>
   <script type="module" src="/src/js/admin.js"></script>
+
+  <!-- Activity Detail Modal -->
+  <div class="modal fade" id="activityDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="fas fa-info-circle"></i> Activity Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="text-muted small">Action</label>
+              <div id="activityDetailAction" class="fw-bold"></div>
+            </div>
+            <div class="col-md-6">
+              <label class="text-muted small">User Type</label>
+              <div id="activityDetailUserType"></div>
+            </div>
+            <div class="col-md-6">
+              <label class="text-muted small">User</label>
+              <div id="activityDetailUser"></div>
+            </div>
+            <div class="col-md-6">
+              <label class="text-muted small">Time</label>
+              <div id="activityDetailTime"></div>
+            </div>
+            <div class="col-12">
+              <label class="text-muted small">Description</label>
+              <div id="activityDetailDescription"></div>
+            </div>
+            <div class="col-md-6">
+              <label class="text-muted small">Entity Type</label>
+              <div id="activityDetailEntityType"></div>
+            </div>
+            <div class="col-md-6">
+              <label class="text-muted small">Entity ID</label>
+              <div id="activityDetailEntityId"></div>
+            </div>
+            <div class="col-md-6">
+              <label class="text-muted small">IP Address</label>
+              <div id="activityDetailIp" class="font-monospace small"></div>
+            </div>
+            <div class="col-md-6">
+              <label class="text-muted small">User Agent</label>
+              <div id="activityDetailUserAgent" class="font-monospace small text-truncate" title=""></div>
+            </div>
+            <div class="col-12" id="activityDetailMetadataContainer" style="display: none;">
+              <label class="text-muted small">Metadata</label>
+              <pre id="activityDetailMetadata" class="bg-light p-2 rounded border" style="max-height: 200px; overflow: auto;"></pre>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
