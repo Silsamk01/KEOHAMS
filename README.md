@@ -83,9 +83,7 @@ php artisan serve
 # Visit: http://localhost:8000
 ```
 
-**Default Admin Credentials:**
-- Email: admin@keohams.com
-- Password: admin123
+
 
 ---
 
