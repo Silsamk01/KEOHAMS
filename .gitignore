@@ -1,7 +1,53 @@
-node_modules
+# Dependencies
+node_modules/
+frontend/node_modules/
+laravel/vendor/
+
+# Environment files
 .env
 .env.*
-dist
-build
-coverage
+laravel/.env*
+
+# Build artifacts
+dist/
+build/
+frontend/dist/
+laravel/public/build/
+
+# Test coverage
+coverage/
+
+# IDE and OS files
+.vscode/
+.idea/
 .DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Laravel specific
+laravel/storage/logs/*
+!laravel/storage/logs/.gitkeep
+laravel/storage/framework/cache/*
+!laravel/storage/framework/cache/.gitkeep
+laravel/storage/framework/sessions/*
+!laravel/storage/framework/sessions/.gitkeep
+laravel/storage/framework/views/*
+!laravel/storage/framework/views/.gitkeep
+laravel/bootstrap/cache/*
+!laravel/bootstrap/cache/.gitkeep
+
+# Uploaded files (consider backing up separately)
+laravel/storage/app/public/*
+!laravel/storage/app/public/.gitkeep
+
+# Database exports (large files)
+*.sql
+keohams.sql
+keohams_public_blog.sql
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

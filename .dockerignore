@@ -1,7 +1,41 @@
-node_modules
-npm-debug.log
-Dockerfile
-.git
+# Git and documentation
+.git/
 .gitignore
-frontend/dist/*.map
+README.md
+MIGRATION_HISTORY.md
+DOCKER.md
+
+# Environment files (use docker-compose or -e flags)
 .env
+.env.*
+laravel/.env*
+
+# Dependencies (installed during build)
+laravel/vendor/
+laravel/node_modules/
+frontend/node_modules/
+
+# Build artifacts
+frontend/dist/*.map
+laravel/public/build/
+
+# Development files
+test-captcha.html
+keohams.sql
+keohams_public_blog.sql
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Laravel specific
+laravel/storage/logs/*
+laravel/storage/framework/cache/*
+laravel/storage/framework/sessions/*
+laravel/storage/framework/views/*
+!laravel/storage/logs/.gitkeep
+!laravel/storage/framework/cache/.gitkeep
+!laravel/storage/framework/sessions/.gitkeep
+!laravel/storage/framework/views/.gitkeep

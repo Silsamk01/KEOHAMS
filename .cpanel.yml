@@ -1,0 +1,39 @@
+---
+# cPanel Git Deployment Configuration
+# This file automates deployment when pushing to the repository
+
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/ngfaczol/public_html/
+    - /bin/cp -R * $DEPLOYPATH
+    - /bin/cp .env.production $DEPLOYPATH/.env
+    - cd $DEPLOYPATH
+    
+    # Install dependencies
+    - /opt/cpanel/composer/bin/composer install --no-dev --optimize-autoloader --no-interaction
+    
+    # Set permissions
+    - chmod -R 755 storage bootstrap/cache
+    - find storage -type f -exec chmod 644 {} \;
+    - find storage -type d -exec chmod 755 {} \;
+    
+    # Clear caches
+    - php artisan cache:clear
+    - php artisan config:clear
+    - php artisan route:clear
+    - php artisan view:clear
+    
+    # Run migrations
+    - php artisan migrate --force
+    
+    # Optimize for production
+    - php artisan config:cache
+    - php artisan route:cache
+    - php artisan view:cache
+    - php artisan cache:warmup
+    
+    # Set final permissions
+    - chmod 644 .env
+    
+    # Restart OPcache (if available)
+    - php -r "if (function_exists('opcache_reset')) opcache_reset();"

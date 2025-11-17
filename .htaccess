@@ -1,0 +1,141 @@
+# ============================================
+# KEOHAMS Root .htaccess
+# Handles routing between Frontend and Laravel API
+# ============================================
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Force HTTPS (Production only - comment out for local dev)
+    # RewriteCond %{HTTPS} off
+    # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+    
+    # ====================
+    # API Routes → Laravel
+    # ====================
+    # Route all /api/* requests to Laravel's public/index.php
+    RewriteCond %{REQUEST_URI} ^/api/
+    RewriteRule ^(.*)$ public/index.php [L,QSA]
+    
+    # ====================
+    # Laravel Admin Routes
+    # ====================
+    # Route Laravel-specific routes to Laravel
+    RewriteCond %{REQUEST_URI} ^/(admin|dashboard|sanctum)/
+    RewriteRule ^(.*)$ public/index.php [L,QSA]
+    
+    # ====================
+    # Storage/Assets → Laravel
+    # ====================
+    # Route storage and build assets to Laravel public directory
+    RewriteCond %{REQUEST_URI} ^/(storage|build)/
+    RewriteRule ^(.*)$ public/$1 [L]
+    
+    # ====================
+    # Static Frontend Files
+    # ====================
+    # Serve static HTML pages directly if they exist
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_URI} \.(html|css|js|jpg|jpeg|png|gif|svg|ico|woff|woff2|ttf|eot)$
+    RewriteRule ^ - [L]
+    
+    # Serve index.html for root
+    RewriteRule ^$ index.html [L]
+    
+    # ====================
+    # Frontend Page Routing
+    # ====================
+    # Route /about → /pages/about.html
+    RewriteRule ^about$ pages/about.html [L]
+    RewriteRule ^contact$ pages/contact.html [L]
+    RewriteRule ^blog-public$ pages/blog-public.html [L]
+    RewriteRule ^blog-public-post$ pages/blog-public-post.html [L]
+    RewriteRule ^affiliate-register$ pages/affiliate-register.html [L]
+    RewriteRule ^affiliate-login$ pages/affiliate-login.html [L]
+    RewriteRule ^affiliate-forgot-password$ pages/affiliate-forgot-password.html [L]
+    RewriteRule ^affiliate-verify$ pages/affiliate-verify.html [L]
+    RewriteRule ^register$ pages/register.html [L]
+    RewriteRule ^forgot$ pages/forgot.html [L]
+    RewriteRule ^reset$ pages/reset.html [L]
+    RewriteRule ^verify$ pages/verify.html [L]
+    RewriteRule ^privacy-policy$ pages/privacy-policy.html [L]
+    RewriteRule ^terms-and-conditions$ pages/terms-and-conditions.html [L]
+    
+    # Authenticated pages (will check auth in JS)
+    RewriteRule ^shop$ pages/shop.html [L]
+    RewriteRule ^cart$ pages/cart.html [L]
+    RewriteRule ^dashboard$ pages/dashboard.html [L]
+    RewriteRule ^settings$ pages/settings.html [L]
+    RewriteRule ^notifications$ pages/notifications.html [L]
+    RewriteRule ^chat$ pages/chat.html [L]
+    RewriteRule ^blog$ pages/blog.html [L]
+    RewriteRule ^blog-post$ pages/blog-post.html [L]
+    RewriteRule ^kyc-enhanced$ pages/kyc-enhanced.html [L]
+    RewriteRule ^affiliate-dashboard$ pages/affiliate-dashboard.html [L]
+    RewriteRule ^admin$ pages/admin.html [L]
+    RewriteRule ^admin-dashboard$ pages/admin-dashboard.html [L]
+    RewriteRule ^admin-logs$ pages/admin-logs.html [L]
+    RewriteRule ^test-quotations$ pages/test-quotations.html [L]
+    
+    # Generic page routing (catch-all for any other pages)
+    RewriteCond %{DOCUMENT_ROOT}/pages/%{REQUEST_URI}.html -f
+    RewriteRule ^(.*)$ pages/$1.html [L]
+    
+    # ====================
+    # Fallback to Laravel
+    # ====================
+    # If no static file found, route to Laravel
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ public/index.php [L]
+</IfModule>
+
+# ====================
+# Security Headers
+# ====================
+<IfModule mod_headers.c>
+    # CORS for API endpoints
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+    
+    # Security headers
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+    Header unset X-Powered-By
+</IfModule>
+
+# ====================
+# Compression
+# ====================
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+</IfModule>
+
+# ====================
+# Browser Caching
+# ====================
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/jpg "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/webp "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+</IfModule>
+
+# ====================
+# Protect Sensitive Files
+# ====================
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "(composer\.json|composer\.lock|package\.json|\.env|\.git)">
+    Require all denied
+</FilesMatch>

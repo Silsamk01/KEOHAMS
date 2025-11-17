@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <link rel="icon" type="image/jpeg" href="/keohamlogo.jpg">
+  <link rel="shortcut icon" type="image/jpeg" href="/keohamlogo.jpg">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cart - KEOHAMS</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <script src="/src/js/api-error-handler.js"></script>
+  <link href="/src/css/styles.css" rel="stylesheet" />
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      <aside class="col-12 col-md-3 col-lg-2 sidebar p-3" id="dashSidebar" data-sidebar></aside>
+      <main class="col-12 col-md-9 col-lg-10 p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3 gap-3">
+          <button class="btn btn-outline-secondary" id="dashBurger" aria-label="Toggle menu">☰</button>
+          <h1 class="h5 m-0">Your Cart</h1>
+          <div class="d-flex align-items-center gap-3 ms-auto">
+            <button class="btn btn-sm btn-outline-secondary" data-theme-toggle type="button">Dark Mode</button>
+            <a class="text-decoration-none position-relative" href="/notifications" title="Notifications">
+              <span class="fs-5">🔔</span>
+              <span data-unread-badge class="badge rounded-pill bg-danger position-absolute translate-middle d-none" style="top:0; left:100%">0</span>
+            </a>
+            <img data-global-avatar src="https://via.placeholder.com/48x48.png?text=U" alt="Avatar" class="rounded-circle border" style="width:48px;height:48px;object-fit:cover;" />
+          </div>
+        </div>
+        <div id="cartTableWrap" class="table-responsive"></div>
+        <div class="d-flex justify-content-end mt-3">
+          <button class="btn btn-primary" id="checkoutBtn">Request Quotation</button>
+        </div>
+      </main>
+    </div>
+  </div>
+  <div id="dashOverlay" class="d-none position-fixed top-0 start-0 w-100 h-100"></div>
+  <script type="module" src="/src/js/global.js"></script>
+  <script type="module" src="/src/js/sidebar.js"></script>
+  <script type="module" src="/src/js/cart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

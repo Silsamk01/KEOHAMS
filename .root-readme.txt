@@ -1,0 +1,61 @@
+# KEOHAMS - Laravel E-Commerce Platform
+
+This is the root directory of the KEOHAMS project.
+
+## 📁 Directory Structure
+
+```
+KEOHAMS/
+├── laravel/              ← Main application (Laravel 10)
+├── frontend/             ← Frontend assets (served by Laravel)
+├── docker/               ← Docker configuration files
+├── README.md             ← Project overview
+├── MIGRATION_HISTORY.md  ← Node.js to Laravel migration details
+├── DOCKER.md             ← Docker deployment guide
+└── Dockerfile            ← Production container definition
+```
+
+## 🚀 Quick Start
+
+**For development:**
+```bash
+cd laravel
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+php artisan serve
+```
+
+**For Docker deployment:**
+```bash
+docker build -t keohams:latest .
+docker run -p 8000:80 --env-file laravel/.env keohams:latest
+```
+
+## 📖 Documentation
+
+All documentation is in the `laravel/docs/` directory:
+- [API Documentation](laravel/docs/API_DOCUMENTATION.md)
+- [Developer Guide](laravel/docs/DEVELOPER_DOCUMENTATION.md)
+- [User Manual](laravel/docs/USER_MANUAL.md)
+- [Admin Guide](laravel/docs/ADMIN_GUIDE.md)
+- [Deployment Guide](laravel/CPANEL_DEPLOYMENT_GUIDE.md)
+
+## ⚠️ Important Notes
+
+1. **All active development happens in `laravel/`**
+2. **Frontend is served by Laravel** - static files in `frontend/` directory
+3. **Former Node.js backend removed** - fully migrated to Laravel
+4. See `MIGRATION_HISTORY.md` for complete migration details
+
+## 🔗 Quick Links
+
+- Repository: https://github.com/Silsamk01/KEOHAMS
+- Support: Ohamskenneth08@gmail.com
+- Status: Production Ready ✅
+- Tests: 220+ with 80%+ coverage
+
+---
+
+**Navigate to `laravel/` for the main application code.**

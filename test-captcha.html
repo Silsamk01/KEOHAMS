@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Captcha</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+  <div class="container mt-5">
+    <h2>Captcha Test</h2>
+    <p>Testing captcha functionality for KEOHAMS</p>
+    
+    <div class="card p-4 mt-4">
+      <h4>Backend Status</h4>
+      <button class="btn btn-primary" id="testBackend">Test Backend API</button>
+      <pre id="backendResult" class="mt-3 bg-light p-3" style="display:none;"></pre>
+    </div>
+    
+    <div class="card p-4 mt-4">
+      <h4>Captcha Canvas Test</h4>
+      <div class="p-2 bg-light rounded-3">
+        <label class="form-label">Captcha</label>
+        <div class="d-flex align-items-center gap-3">
+          <canvas id="testCaptchaCanvas" width="200" height="60" style="border: 1px solid #ccc;"></canvas>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshTestCaptcha">New code</button>
+        </div>
+        <input type="text" class="form-control mt-2" id="testCaptchaAnswer" placeholder="Enter the 6-character code" maxlength="6">
+        <div id="testCaptchaError" class="text-danger mt-2"></div>
+      </div>
+      <button class="btn btn-success mt-3" id="testSubmit">Test Captcha Validation</button>
+    </div>
+    
+    <div class="card p-4 mt-4">
+      <h4>Console Logs</h4>
+      <pre id="consoleLog" class="bg-dark text-light p-3" style="max-height: 300px; overflow-y: auto;"></pre>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Override console.log to display in page
+    const consoleLog = document.getElementById('consoleLog');
+    const originalLog = console.log;
+    const originalError = console.error;
+    
+    function addLog(type, ...args) {
+      const message = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+      ).join(' ');
+      consoleLog.textContent += `[${type}] ${message}\n`;
+      consoleLog.scrollTop = consoleLog.scrollHeight;
+    }
+    
+    console.log = function(...args) {
+      originalLog.apply(console, args);
+      addLog('LOG', ...args);
+    };
+    
+    console.error = function(...args) {
+      originalError.apply(console, args);
+      addLog('ERROR', ...args);
+    };
+
+    // Test backend API
+    document.getElementById('testBackend').addEventListener('click', async function() {
+      const resultEl = document.getElementById('backendResult');
+      resultEl.style.display = 'block';
+      resultEl.textContent = 'Testing backend...';
+      
+      try {
+        // Change this URL to your backend
+        const apiUrl = window.location.origin.includes('localhost') 
+          ? 'http://localhost:3000/api/auth/captcha'
+          : `${window.location.origin}/api/auth/captcha`;
+          
+        console.log('Testing API:', apiUrl);
+        const res = await fetch(apiUrl);
+        console.log('Response status:', res.status);
+        
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+        
+        const data = await res.json();
+        console.log('Response data:', data);
+        resultEl.textContent = JSON.stringify(data, null, 2);
+        resultEl.classList.remove('text-danger');
+        resultEl.classList.add('text-success');
+      } catch (error) {
+        console.error('Backend test failed:', error);
+        resultEl.textContent = `ERROR: ${error.message}`;
+        resultEl.classList.add('text-danger');
+      }
+    });
+
+    // Captcha functionality
+    let testCaptchaToken = null;
+    
+    async function loadTestCaptcha() {
+      console.log('Loading test captcha...');
+      try {
+        const apiUrl = window.location.origin.includes('localhost')
+          ? 'http://localhost:3000/api/auth/captcha'
+          : `${window.location.origin}/api/auth/captcha`;
+          
+        console.log('Fetching captcha from:', apiUrl);
+        const res = await fetch(apiUrl);
+        
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+        
+        const data = await res.json();
+        console.log('Captcha data received:', data);
+        testCaptchaToken = data.token;
+        const code = (data.question || '').replace('Enter code: ', '').trim();
+        console.log('Drawing captcha code:', code);
+        drawTestCaptcha(code);
+        
+        document.getElementById('testCaptchaError').textContent = 'Captcha loaded successfully!';
+        document.getElementById('testCaptchaError').className = 'text-success mt-2';
+      } catch (error) {
+        console.error('Captcha load failed:', error);
+        const canvas = document.getElementById('testCaptchaCanvas');
+        if (canvas && canvas.getContext) {
+          const ctx = canvas.getContext('2d');
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.fillStyle = '#dc3545';
+          ctx.font = '12px Arial';
+          ctx.fillText('Error loading captcha', 10, 30);
+        }
+        document.getElementById('testCaptchaError').textContent = `Error: ${error.message}`;
+        document.getElementById('testCaptchaError').className = 'text-danger mt-2';
+        testCaptchaToken = null;
+      }
+    }
+    
+    function drawTestCaptcha(code) {
+      const canvas = document.getElementById('testCaptchaCanvas');
+      if (!canvas || !canvas.getContext) {
+        console.error('Canvas not found or not supported');
+        return;
+      }
+      
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+      
+      console.log('Drawing on canvas:', W, 'x', H);
+      
+      // Clear canvas
+      ctx.clearRect(0, 0, W, H);
+      
+      // Background gradient
+      const bgGradient = ctx.createLinearGradient(0, 0, W, H);
+      bgGradient.addColorStop(0, '#f8fbff');
+      bgGradient.addColorStop(1, '#e9f0ff');
+      ctx.fillStyle = bgGradient;
+      ctx.fillRect(0, 0, W, H);
+      
+      // Random noise lines
+      for (let i = 0; i < 6; i++) {
+        ctx.strokeStyle = `rgba(${rand(50,150)},${rand(50,150)},${rand(50,150)},0.6)`;
+        ctx.lineWidth = rand(1, 2);
+        ctx.beginPath();
+        ctx.moveTo(rand(0, W/2), rand(0, H));
+        ctx.bezierCurveTo(rand(0, W), rand(0, H), rand(0, W), rand(0, H), rand(W/2, W), rand(0, H));
+        ctx.stroke();
+      }
+      
+      // Random dots
+      for (let i = 0; i < 80; i++) {
+        ctx.fillStyle = `rgba(${rand(100,200)},${rand(100,200)},${rand(100,200)},0.5)`;
+        ctx.fillRect(rand(0, W), rand(0, H), 1, 1);
+      }
+      
+      // Draw captcha text
+      const chars = code.split('');
+      const baseX = 20;
+      const stepX = Math.floor((W - 40) / chars.length);
+      chars.forEach((ch, idx) => {
+        const x = baseX + idx * stepX + rand(-2, 2);
+        const y = rand(Math.floor(H*0.55), Math.floor(H*0.7));
+        const angle = (rand(-20, 20) * Math.PI) / 180;
+        const fontSize = rand(26, 34);
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        ctx.font = `${fontSize}px Verdana, Tahoma, Arial`;
+        ctx.fillStyle = `rgb(${rand(20,80)},${rand(20,80)},${rand(20,80)})`;
+        ctx.shadowColor = 'rgba(0,0,0,0.2)';
+        ctx.shadowBlur = 2;
+        ctx.fillText(ch, 0, 0);
+        ctx.restore();
+      });
+      
+      // Border
+      ctx.strokeStyle = '#cfe2ff';
+      ctx.strokeRect(0.5, 0.5, W-1, H-1);
+      
+      console.log('Captcha drawn successfully');
+      
+      function rand(min, max) { 
+        return Math.floor(Math.random() * (max - min + 1)) + min; 
+      }
+    }
+    
+    // Refresh button
+    document.getElementById('refreshTestCaptcha').addEventListener('click', function() {
+      console.log('Refresh button clicked');
+      loadTestCaptcha();
+    });
+    
+    // Test submit
+    document.getElementById('testSubmit').addEventListener('click', async function() {
+      const answer = document.getElementById('testCaptchaAnswer').value.trim();
+      const errorEl = document.getElementById('testCaptchaError');
+      
+      if (!testCaptchaToken) {
+        errorEl.textContent = 'No captcha loaded. Click refresh first.';
+        errorEl.className = 'text-danger mt-2';
+        return;
+      }
+      
+      if (!/^[a-zA-Z0-9]{6}$/.test(answer)) {
+        errorEl.textContent = 'Please enter a 6-character code.';
+        errorEl.className = 'text-danger mt-2';
+        return;
+      }
+      
+      console.log('Testing validation with answer:', answer);
+      
+      try {
+        const apiUrl = window.location.origin.includes('localhost')
+          ? 'http://localhost:3000/api/auth/login'
+          : `${window.location.origin}/api/auth/login`;
+          
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: 'test@example.com',
+            password: 'test',
+            captchaToken: testCaptchaToken,
+            captchaAnswer: answer
+          })
+        });
+        
+        const data = await res.json();
+        console.log('Validation response:', data);
+        
+        if (res.ok) {
+          errorEl.textContent = 'Captcha is correct! (Login would fail because test credentials)';
+          errorEl.className = 'text-success mt-2';
+        } else {
+          if (/captcha/i.test(data.message || '')) {
+            errorEl.textContent = `Captcha validation: ${data.message}`;
+            errorEl.className = 'text-warning mt-2';
+            loadTestCaptcha(); // Reload
+          } else {
+            errorEl.textContent = `Login response: ${data.message}`;
+            errorEl.className = 'text-info mt-2';
+          }
+        }
+      } catch (error) {
+        console.error('Test failed:', error);
+        errorEl.textContent = `Error: ${error.message}`;
+        errorEl.className = 'text-danger mt-2';
+      }
+    });
+    
+    // Auto-load captcha on page load
+    console.log('Page loaded, initializing captcha test');
+    setTimeout(() => {
+      loadTestCaptcha();
+    }, 500);
+  </script>
+</body>
+</html>

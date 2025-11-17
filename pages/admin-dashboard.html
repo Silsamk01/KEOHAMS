@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - KEOHAMS</title>
+    <link rel="stylesheet" href="../src/css/main.css">
+    <link rel="stylesheet" href="../src/css/admin-dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body class="admin-page">
+    <div id="adminDashboard" class="admin-container">
+        <!-- Header -->
+        <header class="admin-header">
+            <div class="header-left">
+                <button id="toggleSidebar" class="btn-icon">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1>Admin Dashboard</h1>
+            </div>
+            <div class="header-right">
+                <button id="refreshDashboard" class="btn-icon" title="Refresh Dashboard">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+                <button id="clearCacheBtn" class="btn-icon" title="Clear Cache">
+                    <i class="fas fa-broom"></i>
+                </button>
+                <div class="admin-profile">
+                    <img src="../src/assets/default-avatar.png" alt="Admin" class="avatar">
+                    <span class="admin-name">Administrator</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Sidebar -->
+        <aside class="admin-sidebar">
+            <nav class="sidebar-nav">
+                <a href="#overview" class="nav-item active">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Overview</span>
+                </a>
+                <a href="#orders" class="nav-item">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span>Orders</span>
+                </a>
+                <a href="#users" class="nav-item">
+                    <i class="fas fa-users"></i>
+                    <span>Users</span>
+                </a>
+                <a href="#products" class="nav-item">
+                    <i class="fas fa-box"></i>
+                    <span>Products</span>
+                </a>
+                <a href="#analytics" class="nav-item">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Analytics</span>
+                </a>
+                <a href="#kyc" class="nav-item">
+                    <i class="fas fa-id-card"></i>
+                    <span>KYC</span>
+                </a>
+                <a href="#tickets" class="nav-item">
+                    <i class="fas fa-ticket-alt"></i>
+                    <span>Support</span>
+                </a>
+                <a href="#system" class="nav-item">
+                    <i class="fas fa-cog"></i>
+                    <span>System</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="admin-main">
+            <!-- Overview Statistics -->
+            <section id="overviewSection" class="dashboard-section">
+                <div class="section-header">
+                    <h2>Overview</h2>
+                    <p class="subtitle">Real-time business metrics and statistics</p>
+                </div>
+                <div id="overviewStats"></div>
+            </section>
+
+            <!-- Charts Section -->
+            <section id="chartsSection" class="dashboard-section">
+                <div class="charts-grid">
+                    <!-- Revenue Chart -->
+                    <div class="chart-card">
+                        <div class="card-header">
+                            <h3>Revenue Trend</h3>
+                            <div class="chart-controls">
+                                <button class="btn-sm active" data-chart-type="revenue" data-chart-period="7">7d</button>
+                                <button class="btn-sm" data-chart-type="revenue" data-chart-period="30">30d</button>
+                                <button class="btn-sm" data-chart-type="revenue" data-chart-period="90">90d</button>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="revenueChart"></canvas>
+                        </div>
+                        <div id="revenueChartSummary" class="chart-footer"></div>
+                    </div>
+
+                    <!-- Orders Chart -->
+                    <div class="chart-card">
+                        <div class="card-header">
+                            <h3>Orders Trend</h3>
+                            <div class="chart-controls">
+                                <button class="btn-sm active" data-chart-type="orders" data-chart-period="7">7d</button>
+                                <button class="btn-sm" data-chart-type="orders" data-chart-period="30">30d</button>
+                                <button class="btn-sm" data-chart-type="orders" data-chart-period="90">90d</button>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="ordersChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Detailed Stats Row -->
+            <section id="detailedStatsSection" class="dashboard-section">
+                <div class="details-grid">
+                    <!-- Revenue Details -->
+                    <div class="detail-card">
+                        <div class="card-header">
+                            <h3>Revenue Details</h3>
+                            <i class="fas fa-coins"></i>
+                        </div>
+                        <div id="revenueDetails" class="card-content"></div>
+                    </div>
+
+                    <!-- Order Stats -->
+                    <div class="detail-card">
+                        <div class="card-header">
+                            <h3>Order Status</h3>
+                            <i class="fas fa-shopping-cart"></i>
+                        </div>
+                        <div id="orderStats" class="card-content"></div>
+                    </div>
+
+                    <!-- User Stats -->
+                    <div class="detail-card">
+                        <div class="card-header">
+                            <h3>User Statistics</h3>
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div id="userStats" class="card-content"></div>
+                    </div>
+
+                    <!-- Product Stats -->
+                    <div class="detail-card">
+                        <div class="card-header">
+                            <h3>Product Inventory</h3>
+                            <i class="fas fa-box"></i>
+                        </div>
+                        <div id="productStats" class="card-content"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Top Performers Section -->
+            <section id="topPerformersSection" class="dashboard-section">
+                <div class="performers-grid">
+                    <!-- Top Products -->
+                    <div class="performer-card">
+                        <div class="card-header">
+                            <h3>Top Products</h3>
+                            <select id="topProductsLimit" class="select-sm">
+                                <option value="5">Top 5</option>
+                                <option value="10" selected>Top 10</option>
+                                <option value="20">Top 20</option>
+                            </select>
+                        </div>
+                        <div id="topProductsTable" class="card-content"></div>
+                    </div>
+
+                    <!-- Top Customers -->
+                    <div class="performer-card">
+                        <div class="card-header">
+                            <h3>Top Customers</h3>
+                            <select id="topCustomersLimit" class="select-sm">
+                                <option value="5">Top 5</option>
+                                <option value="10" selected>Top 10</option>
+                                <option value="20">Top 20</option>
+                            </select>
+                        </div>
+                        <div id="topCustomersTable" class="card-content"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent Activities -->
+            <section id="activitiesSection" class="dashboard-section">
+                <div class="section-header">
+                    <h3>Recent Activities</h3>
+                    <p class="subtitle">Latest system activities and events</p>
+                </div>
+                <div id="recentActivities" class="activities-container"></div>
+            </section>
+
+            <!-- System Health -->
+            <section id="systemHealthSection" class="dashboard-section">
+                <div class="section-header">
+                    <h3>System Health</h3>
+                    <p class="subtitle">Monitor system components and resources</p>
+                </div>
+                <div id="systemHealth"></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+        <p id="loadingMessage">Loading...</p>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notificationContainer" class="notification-container"></div>
+
+    <script type="module">
+        import { AdminDashboard } from '../src/js/admin-dashboard.js';
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', async () => {
+            await AdminDashboard.initialize();
+            
+            // Load charts
+            await AdminDashboard.loadRevenueChart(7);
+            await AdminDashboard.loadOrdersChart(7);
+            
+            // Load top performers
+            await AdminDashboard.loadTopProducts(10);
+            await AdminDashboard.loadTopCustomers(10);
+            
+            // Load system health
+            await AdminDashboard.loadSystemHealth();
+
+            // Setup limit change listeners
+            document.getElementById('topProductsLimit')?.addEventListener('change', (e) => {
+                AdminDashboard.loadTopProducts(parseInt(e.target.value));
+            });
+
+            document.getElementById('topCustomersLimit')?.addEventListener('change', (e) => {
+                AdminDashboard.loadTopCustomers(parseInt(e.target.value));
+            });
+
+            // Sidebar toggle
+            document.getElementById('toggleSidebar')?.addEventListener('click', () => {
+                document.querySelector('.admin-sidebar').classList.toggle('collapsed');
+            });
+
+            // Chart period buttons toggle active state
+            document.querySelectorAll('[data-chart-period]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const type = e.target.dataset.chartType;
+                    document.querySelectorAll(`[data-chart-type="${type}"]`).forEach(b => {
+                        b.classList.remove('active');
+                    });
+                    e.target.classList.add('active');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
