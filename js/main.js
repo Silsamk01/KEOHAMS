@@ -265,25 +265,65 @@ function wireEvents() {
 
 async function preloadCaptcha(kind) {
 	try {
-		const { token, question } = await fetchJSON(`${API_BASE}/v1/captcha`);
-		if (kind === 'signup') { window.__signupCaptchaToken = token; window.__signupCaptchaQuestion = question; }
+		const res = await fetch(`${API_BASE}/v1/captcha`);
+		if (!res.ok) throw new Error('Captcha failed');
+		const data = await res.json();
+		const { token, image } = data.data || data;
+		
+		if (kind === 'signup') { 
+			window.__signupCaptchaToken = token; 
+		}
 		if (kind === 'signin') {
 			window.__signinCaptchaToken = token;
-			const code = (question || '').replace('Enter code: ', '').trim().toUpperCase();
-			drawCaptchaOn(els.signinCaptchaCanvas, code);
+			// Display base64 image from backend
+			if (els.signinCaptchaCanvas && image) {
+				const ctx = els.signinCaptchaCanvas.getContext('2d');
+				const img = new Image();
+				img.onload = () => {
+					ctx.clearRect(0, 0, els.signinCaptchaCanvas.width, els.signinCaptchaCanvas.height);
+					ctx.drawImage(img, 0, 0, els.signinCaptchaCanvas.width, els.signinCaptchaCanvas.height);
+				};
+				img.src = image; // Base64 data URL from backend
+			}
 		}
-	} catch (_) {}
+	} catch (err) {
+		console.error('Captcha load failed:', err);
+	}
 }
 
 async function loginWithCaptcha(email, password, captchaToken, captchaAnswer) {
-	const res = await fetch(`${API_BASE}/v1/login`, {
-		method: 'POST', headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ email, password, captchaToken, captchaAnswer })
+	// Verify captcha first
+	const captchaRes = await fetch(`${API_BASE}/v1/captcha/verify`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ token: captchaToken, answer: captchaAnswer })
 	});
-	if (!res.ok) throw new Error('Invalid credentials or captcha');
+	if (!captchaRes.ok) {
+		const err = await captchaRes.json().catch(() => ({}));
+		throw new Error(err.message || 'Invalid captcha');
+	}
+	
+	// Now attempt login
+	const res = await fetch(`${API_BASE}/v1/login`, {
+		method: 'POST', 
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ email, password })
+	});
+	if (!res.ok) {
+		const err = await res.json().catch(() => ({}));
+		throw new Error(err.message || 'Invalid credentials');
+	}
 	const data = await res.json();
-	if (data.twofa_required) return { twofa_required: true };
-	if (data.token) { saveToken(data.token); }
+	if (data.requires_2fa || data.twofa_required) return { twofa_required: true, user_id: data.user_id };
+	if (data.token) { 
+		saveToken(data.token);
+		if (data.user) {
+			localStorage.setItem('user', JSON.stringify(data.user));
+			localStorage.setItem('user_id', data.user.id);
+			localStorage.setItem('user_name', `${data.user.first_name || ''} ${data.user.last_name || ''}`);
+			localStorage.setItem('user_role', data.user.role || 'USER');
+		}
+	}
 	return data;
 }
 
@@ -304,14 +344,31 @@ if (twofaForm) {
 		const password = document.getElementById('signinPassword').value;
 		const twofa_token = tokenInput.value.trim();
 		const recovery_code = recoveryInput.value.trim();
-		// Reuse signin captcha for 2FA verification
-		const captchaToken = window.__signinCaptchaToken;
-		const captchaAnswer = els.signinCaptchaAnswer?.value.trim();
+		
 		try {
-			const res = await fetch(`${API_BASE}/v1/verify-2fa`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ email, password, twofa_token: twofa_token||undefined, recovery_code: recovery_code||undefined, captchaToken, captchaAnswer }) });
-			if (!res.ok) throw new Error((await res.text())||'Invalid 2FA');
+			const payload = { email, password };
+			if (twofa_token) payload.code = twofa_token;
+			if (recovery_code) payload.recovery_code = recovery_code;
+			
+			const res = await fetch(`${API_BASE}/v1/verify-2fa`, { 
+				method:'POST', 
+				headers:{ 'Content-Type':'application/json' }, 
+				body: JSON.stringify(payload) 
+			});
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({}));
+				throw new Error(err.message || 'Invalid 2FA code');
+			}
 			const data = await res.json();
-			if (data.token) saveToken(data.token);
+			if (data.token) {
+				saveToken(data.token);
+				if (data.user) {
+					localStorage.setItem('user', JSON.stringify(data.user));
+					localStorage.setItem('user_id', data.user.id);
+					localStorage.setItem('user_name', `${data.user.first_name || ''} ${data.user.last_name || ''}`);
+					localStorage.setItem('user_role', data.user.role || 'USER');
+				}
+			}
 			try { bootstrap.Modal.getInstance(els.signinModal).hide(); } catch(_){ }
 			if (data.user?.role==='ADMIN') window.location.href='/admin'; else window.location.href='/dashboard';
 		} catch(err){ status.textContent = err.message || 'Verification failed'; }

@@ -19,6 +19,8 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\SupportController;
 use App\Http\Controllers\UploadController;
 use App\Http\Controllers\SecurityController;
+use App\Http\Controllers\CaptchaController;
+use App\Http\Controllers\CurrencyController;
 
 /*
 |--------------------------------------------------------------------------
@@ -33,6 +35,14 @@ use App\Http\Controllers\SecurityController;
 
 // Public routes (no authentication required)
 Route::prefix('v1')->group(function () {
+    
+    // Captcha routes
+    Route::get('/captcha', [CaptchaController::class, 'generate']);
+    Route::post('/captcha/verify', [CaptchaController::class, 'verify']);
+    
+    // Currency routes
+    Route::get('/currency/rates', [CurrencyController::class, 'getRates']);
+    Route::post('/currency/convert', [CurrencyController::class, 'convert']);
     
     // Authentication routes
     Route::post('/register', [AuthController::class, 'register']);

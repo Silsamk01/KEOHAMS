@@ -11,6 +11,7 @@ use App\Services\SecurityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -78,8 +79,14 @@ class AuthController extends Controller
             'email_verification_token' => Str::random(64),
         ]);
 
-        // Send verification email
-        // Mail::to($user->email)->send(new VerificationEmail($user));
+        // Send verification email (queued)
+        if (config('mail.enabled', true)) {
+            try {
+                Mail::to($user->email)->queue(new VerificationEmail($user, $user->email_verification_token));
+            } catch (\Exception $e) {
+                Log::error('Failed to send verification email: ' . $e->getMessage());
+            }
+        }
 
         ActivityLog::log('USER_REGISTERED', $user->id, 'User registered', ['email' => $user->email]);
 
@@ -143,12 +150,12 @@ class AuthController extends Controller
         // Clear failed login attempts on successful authentication
         $this->securityService->clearFailedLogins($validated['email'], $ip);
 
-        // Check if 2FA is enabled
-        if ($user->two_factor_enabled) {
+        // Check if 2FA is enabled (using email_2fa_enabled column)
+        if ($user->email_2fa_enabled || $user->has_two_factor) {
             // Generate 2FA code
             $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-            $user->two_factor_code = Hash::make($code);
-            $user->two_factor_expires_at = now()->addMinutes(10);
+            $user->email_2fa_code = Hash::make($code);
+            $user->email_2fa_expires_at = now()->addMinutes(10);
             $user->save();
 
             // Send 2FA code via email (queued)
@@ -189,41 +196,64 @@ class AuthController extends Controller
     public function verify2FA(Request $request)
     {
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'code' => 'required|string|size:6',
+            'email' => 'required|email|exists:users,email',
+            'password' => 'required|string',
+            'code' => 'nullable|string|size:6',
+            'recovery_code' => 'nullable|string',
         ]);
 
-        $user = User::findOrFail($validated['user_id']);
-
-        if (!$user->two_factor_code || !$user->two_factor_expires_at) {
-            return response()->json(['message' => 'No 2FA code found.'], 400);
+        // Find user by email
+        $user = User::where('email', $validated['email'])->firstOrFail();
+        
+        // Verify password
+        if (!Hash::check($validated['password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'email' => ['The provided credentials are incorrect.'],
+            ]);
         }
 
-        if (now()->greaterThan($user->two_factor_expires_at)) {
-            return response()->json(['message' => '2FA code has expired.'], 400);
+        // Check if recovery code is being used
+        if (!empty($validated['recovery_code'])) {
+            $recoveryCodes = $user->recovery_codes ?? [];
+            if (!in_array($validated['recovery_code'], $recoveryCodes)) {
+                return response()->json(['message' => 'Invalid recovery code.'], 400);
+            }
+            
+            // Remove used recovery code
+            $user->recovery_codes = array_values(array_diff($recoveryCodes, [$validated['recovery_code']]));
+            $user->save();
+        } else {
+            // Verify with email 2FA code
+            if (!$user->email_2fa_code || !$user->email_2fa_expires_at) {
+                return response()->json(['message' => 'No 2FA code found.'], 400);
+            }
+
+            if (now()->greaterThan($user->email_2fa_expires_at)) {
+                return response()->json(['message' => '2FA code has expired.'], 400);
+            }
+
+            if (empty($validated['code']) || !Hash::check($validated['code'], $user->email_2fa_code)) {
+                // Track failed 2FA attempt
+                $this->securityService->trackFailedLogin(
+                    $user->email,
+                    $request->ip(),
+                    [
+                        'type' => '2FA',
+                        'user_agent' => $request->userAgent(),
+                    ]
+                );
+
+                return response()->json(['message' => 'Invalid 2FA code.'], 400);
+            }
+
+            // Clear failed login attempts on successful 2FA
+            $this->securityService->clearFailedLogins($user->email, $request->ip());
+
+            // Clear 2FA code
+            $user->email_2fa_code = null;
+            $user->email_2fa_expires_at = null;
+            $user->save();
         }
-
-        if (!Hash::check($validated['code'], $user->two_factor_code)) {
-            // Track failed 2FA attempt
-            $this->securityService->trackFailedLogin(
-                $user->email,
-                $request->ip(),
-                [
-                    'type' => '2FA',
-                    'user_agent' => $request->userAgent(),
-                ]
-            );
-
-            return response()->json(['message' => 'Invalid 2FA code.'], 400);
-        }
-
-        // Clear failed login attempts on successful 2FA
-        $this->securityService->clearFailedLogins($user->email, $request->ip());
-
-        // Clear 2FA code
-        $user->two_factor_code = null;
-        $user->two_factor_expires_at = null;
-        $user->save();
 
         // Create token
         $token = $user->createToken('auth-token', ['*'], now()->addDays(30))->plainTextToken;
@@ -398,12 +428,22 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
-        $user->two_factor_enabled = true;
+        $user->email_2fa_enabled = true;
+        
+        // Generate recovery codes
+        $recoveryCodes = [];
+        for ($i = 0; $i < 10; $i++) {
+            $recoveryCodes[] = strtoupper(Str::random(8));
+        }
+        $user->recovery_codes = $recoveryCodes;
         $user->save();
 
         ActivityLog::log('TWO_FACTOR_ENABLED', $user->id, '2FA enabled');
 
-        return response()->json(['message' => 'Two-factor authentication enabled.']);
+        return response()->json([
+            'message' => 'Two-factor authentication enabled.',
+            'recovery_codes' => $recoveryCodes,
+        ]);
     }
 
     /**
@@ -413,10 +453,10 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
-        $user->two_factor_enabled = false;
-        $user->two_factor_secret = null;
-        $user->two_factor_code = null;
-        $user->two_factor_expires_at = null;
+        $user->email_2fa_enabled = false;
+        $user->twofa_secret = null;
+        $user->email_2fa_code = null;
+        $user->email_2fa_expires_at = null;
         $user->recovery_codes = null;
         $user->save();
 
